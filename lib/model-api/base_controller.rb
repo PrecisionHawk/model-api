@@ -19,7 +19,6 @@ module ModelApi
 
       base.send(:include, InstanceMethods)
 
-      base.send(:before_action, :doorkeeper_authorize!)
       base.send(:before_filter, :common_headers)
 
       base.send(:rescue_from, Exception, with: :unhandled_exception)
@@ -163,7 +162,8 @@ module ModelApi
         opts[:user_id] = user.try(:id)
         opts[:admin] = user.try(:admin_api_user?) ? true : false
         opts[:admin_content] = admin_content?
-        opts[:collection_link_options] = opts[:object_link_options] = params.to_h.symbolize_keys
+        opts[:collection_link_options] = opts[:object_link_options] =
+            request.query_parameters.to_h.symbolize_keys
         opts
       end
 
@@ -220,7 +220,8 @@ module ModelApi
         opts = base_api_options.merge(opts)
         klass = opts[:model_class] || model_class
         query = api_query(opts)
-        unless admin_access? && (admin_content? || filtered_by_foreign_key?(query))
+        unless (opts.include?(:user_filter) && !opts[:user_filter]) ||
+            (admin_access? && (admin_content? || filtered_by_foreign_key?(query)))
           query = user_query(query, opts.merge(model_class: klass))
         end
         query
@@ -404,6 +405,7 @@ module ModelApi
       end
 
       def current_user
+        return @devise_user if @devise_user.present?
         return @current_user if instance_variable_defined?(:@current_user)
         unless doorkeeper_token.present? &&
             doorkeeper_token.resource_owner_id.present?
@@ -490,8 +492,8 @@ module ModelApi
       private
 
       def find_filter_params
-        params.reject do |param, _value|
-          %w(controller action access_token sort_by).include?(param)
+        request.query_parameters.reject do |param, _value|
+          %w(access_token sort_by admin).include?(param)
         end
       end
 
@@ -599,33 +601,42 @@ module ModelApi
         attr_values = {}
         metadata = ModelApi::Utils.filtered_ext_attrs(klass, :filter, opts)
         filter_params.each do |attr, value|
+          attr = attr.to_s
           if attr.length > 1 && ['>', '<', '!', '='].include?(attr[-1])
-            # Effectively allows >= / <= / != / == arguments in query string
-            value = "#{attr[-1]}=#{value}"
+            value = "#{attr[-1]}=#{value}" # Effectively allows >= / <= / != / == in query string
             attr = attr[0..-2].strip
           end
           if attr.include?('.')
-            attr_elems = attr.split('.')
-            assoc_name = attr_elems[0].strip.to_sym
-            attr_metadata = metadata[assoc_name] ||
-                metadata[ModelApi::Utils.ext_query_attr(assoc_name, opts)] || {}
-            assoc_metadata = metadata[assoc_name] || {}
-            key = assoc_metadata[:key]
-            next unless key.present? && ModelApi::Utils.eval_bool(assoc_metadata[:filter], opts)
-            assoc_filter_params = (assoc_values[key] ||= {})
-            assoc_filter_params[attr_elems[1..-1].join('.')] = value
+            process_filter_assoc_param(attr, metadata, assoc_values, value, opts)
           else
-            attr = attr.strip.to_sym
-            attr_metadata = metadata[attr] ||
-                metadata[ModelApi::Utils.ext_query_attr(attr, opts)] || {}
-            key = attr_metadata[:key]
-            next unless key.present? && ModelApi::Utils.eval_bool(attr_metadata[:filter], opts)
-            filter_metadata[key] = attr_metadata
-            attr_values[key] = value
+            process_filter_attr_param(attr, metadata, filter_metadata, attr_values, value, opts)
           end
         end
         [assoc_values, filter_metadata, attr_values]
       end
+
+      # rubocop:disable Metrics/ParameterLists
+      def process_filter_assoc_param(attr, metadata, assoc_values, value, opts)
+        attr_elems = attr.split('.')
+        assoc_name = attr_elems[0].strip.to_sym
+        assoc_metadata = metadata[assoc_name] ||
+            metadata[ModelApi::Utils.ext_query_attr(assoc_name, opts)] || {}
+        key = assoc_metadata[:key]
+        return unless key.present? && ModelApi::Utils.eval_bool(assoc_metadata[:filter], opts)
+        assoc_filter_params = (assoc_values[key] ||= {})
+        assoc_filter_params[attr_elems[1..-1].join('.')] = value
+      end
+
+      def process_filter_attr_param(attr, metadata, filter_metadata, attr_values, value, opts)
+        attr = attr.strip.to_sym
+        attr_metadata = metadata[attr] ||
+            metadata[ModelApi::Utils.ext_query_attr(attr, opts)] || {}
+        key = attr_metadata[:key]
+        return unless key.present? && ModelApi::Utils.eval_bool(attr_metadata[:filter], opts)
+        filter_metadata[key] = attr_metadata
+        attr_values[key] = value
+      end
+      # rubocop:enable Metrics/ParameterLists
 
       def apply_filter_param(attr_metadata, collection, opts = {})
         raw_value = (opts[:attr_values] || params)[attr_metadata[:key]]
@@ -936,6 +947,7 @@ module ModelApi
       end
 
       def self.apply_updates(obj, req_obj, operation, opts = {})
+        opts = opts.merge(object: opts[:object] || obj)
         metadata = ModelApi::Utils.filtered_ext_attrs(opts[:api_attr_metadata] ||
             ModelApi::Utils.filtered_attrs(obj, operation, opts), operation, opts)
         set_context_attrs(obj, opts)
@@ -981,9 +993,10 @@ module ModelApi
         metadata = opts.delete(:api_attr_metadata) ||
             ModelApi::Utils.filtered_attrs(obj, operation, opts)
         model_metadata = opts.delete(:api_model_metadata) || ModelApi::Utils.model_metadata(obj.class)
+        ModelApi::Utils.invoke_callback(model_metadata[:before_validate], obj, opts.dup)
         validate_operation(obj, operation, opts)
         validate_preserving_existing_errors(obj)
-        ModelApi::Utils.invoke_callback(model_metadata[:before_validate], obj, opts.dup)
+        ModelApi::Utils.invoke_callback(model_metadata[:before_save], obj, opts.dup)
         obj.instance_variable_set(:@readonly, false) if obj.instance_variable_get(:@readonly)
         successful = obj.save unless obj.errors.present?
         if successful
@@ -1144,7 +1157,7 @@ module ModelApi
                 "(\"#{e.message}\"): \"#{value.to_s.first(1000)}\" ... using raw value instead."
         end
         begin
-          if attr_metadata[:type] == :association
+          if attr_metadata[:type] == :association && attr_metadata[:parse].blank?
             attr_metadata = opts[:attr_metadata]
             assoc = attr_metadata[:association]
             if assoc.macro == :has_many

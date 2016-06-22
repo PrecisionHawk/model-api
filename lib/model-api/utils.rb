@@ -308,7 +308,7 @@ module ModelApi
         return eval_bool(obj, metadata[:filter], opts) if operation == :filter
         return eval_bool(obj, metadata[:sort], opts) if operation == :sort
         return false unless include_item_meets_read_write_criteria?(metadata, obj, operation, opts)
-        return false unless include_item_meets_include_exclude_criteria?(metadata, obj, opts)
+        return false unless include_item_meets_incl_excl_criteria?(metadata, obj, operation, opts)
         true
       end
 
@@ -371,7 +371,7 @@ module ModelApi
         true
       end
 
-      def include_item_meets_include_exclude_criteria?(metadata, operation, obj, opts = {})
+      def include_item_meets_incl_excl_criteria?(metadata, obj, operation, opts = {})
         if (only = metadata[:only]).present?
           return false unless action_filter(obj, operation, only, opts)
         end

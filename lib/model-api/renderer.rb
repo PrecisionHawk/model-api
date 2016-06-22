@@ -249,6 +249,13 @@ module ModelApi
           end
         else
           id = obj.is_a?(Hash) ? obj[id_attr] : obj.send(id_attr)
+          path_params = Rails.application.routes.routes.named_routes[route.to_s].parts rescue []
+          path_params.each do |param|
+            param = param.to_sym
+            next if link_opts.include?(param)
+            value = controller.params[param]
+            link_opts[param] = value if value.present?
+          end
           [route, { (opts[:id_param] || :id) => id }.merge(link_opts)]
         end
       end
