@@ -85,7 +85,7 @@ module ModelApi
           end
         end
         opts = ModelApi::Utils.contextual_metadata_opts(attr_metadata, opts)
-        opts[:operation] = :show
+        opts[:operation] ||= :show
         if value.respond_to?(:map)
           return value.map do |elem|
             elem.is_a?(ActiveRecord::Base) ? serializable_object(elem, opts) : elem
