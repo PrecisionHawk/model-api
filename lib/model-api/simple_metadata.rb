@@ -1,7 +1,7 @@
 module ModelApi
   class SimpleMetadata
     class << self
-      def process_metadata(type, obj, args)
+      def process_metadata(type, obj, args, opts = {})
         instance_var = :"@api_#{type}_metadata"
         metadata = obj.instance_variable_get(instance_var) || {}
         if args.present?
@@ -12,6 +12,8 @@ module ModelApi
           else
             metadata.merge!(Hash[args.map { |key| [key.to_sym, {}] }])
           end
+          ModelApi::Utils.invoke_callback(opts[:post_process], metadata,
+              opts.merge(type: type, object: obj))
           obj.instance_variable_set(instance_var, metadata)
         end
         metadata.dup

@@ -2,9 +2,19 @@ module ModelApi
   module Model
     module ClassMethods
       def api_model(*args)
-        metadata = ModelApi::SimpleMetadata.process_metadata(:model, self, args)
+        metadata = ModelApi::SimpleMetadata.process_metadata(:model, self, args,
+            post_process: (lambda do |metadata|
+              if args.present? && metadata.include?(:id_attributes)
+                metadata[:id_attributes] = metadata[:id_attributes]
+                    .map { |v| (v.is_a?(Array) ? v.flatten : [v]).map(&:to_sym) }
+              end
+            end))
         ModelApi::SimpleMetadata.merge_superclass_metadata(:model, superclass, metadata,
             exclude_keys: [:alias])
+      end
+
+      def api_model_post_process_metadata(klass, metadata)
+
       end
 
       def api_attributes(*args)
@@ -14,10 +24,11 @@ module ModelApi
           id_attrs = []
           metadata.each { |attr, attr_metadata| id_attrs << attr if attr_metadata[:id] }
           if id_attrs.present?
-            id_attrs = id_attrs.map(&:to_sym)
-            existing_id_attrs = (api_model[:id_attributes] || []).map(&:to_sym)
-            if (id_attrs - existing_id_attrs).present?
-              api_model id_attributes: (id_attrs - existing_id_attrs).uniq
+            id_attr_sets = id_attrs.map { |v| (v.is_a?(Array) ? v.flatten : [v]).map(&:to_sym) }
+            existing_id_attr_sets = (api_model[:id_attributes] || [])
+                .map { |v| (v.is_a?(Array) ? v.flatten : [v]).map(&:to_sym) }
+            if (id_attr_sets - existing_id_attr_sets).present?
+              api_model id_attributes: (id_attr_sets - existing_id_attr_sets).uniq
             end
           end
         end
@@ -42,8 +53,10 @@ module ModelApi
       end
     end
 
-    def self.included(base)
-      base.extend(ClassMethods)
+    class << self
+      def included(base)
+        base.extend(ClassMethods)
+      end
     end
   end
 end

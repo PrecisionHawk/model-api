@@ -32,8 +32,10 @@ module ModelApi
       end
     end
 
-    def self.included(base)
-      base.extend(ClassMethods)
+    class << self
+      def included(base)
+        base.extend(ClassMethods)
+      end
     end
 
     class Utils
