@@ -238,7 +238,7 @@ module ModelApi
         klass = opts[:model_class] || model_class
         user_id_col = opts[:user_id_column] || :user_id
         user_assoc = opts[:user_association] || :user
-        user_id = user.send(opts[:user_id_attribute] || :id)
+        user_id = user.try(opts[:user_id_attribute] || :id)
         if klass.columns_hash.include?(user_id_col.to_s)
           query = query.where(user_id_col => user_id)
         elsif (assoc = klass.reflect_on_association(user_assoc)).present? &&
@@ -261,8 +261,9 @@ module ModelApi
       end
       
       def ensure_admin
-        return true if current_user.try(:admin_api_user?)
-        
+        user = current_user
+        return true if user.respond_to?(:admin_api_user?) && user.admin_api_user?
+
         # Mask presence of endpoint if user is not authorized to access it
         not_found
         false
@@ -270,19 +271,14 @@ module ModelApi
       
       def unhandled_exception(err)
         return if handle_api_exceptions(err)
-        error_id = LogUtils.log_and_notify(err)
         return if performed?
         error_details = {}
         if Rails.env == 'development'
           error_details[:message] = "Exception: #{err.message}"
-          error_details[:error_event_id] = error_id
           error_details[:backtrace] = err.backtrace
         else
           error_details[:message] = 'An internal server error has occurred ' \
-              'while processing your request.  Please contact customer ' \
-              'support, referencing the following error event id, for ' \
-              "assistance: #{error_id}"
-          error_details[:error_event_id] = error_id
+              'while processing your request.'
         end
         ModelApi::Renderer.render(self, error_details, root: :error_details,
             status: :internal_server_error)
@@ -405,29 +401,13 @@ module ModelApi
         simple_error(status, errors, opts)
         false
       end
-      
-      def current_user
-        return @devise_user if @devise_user.present?
-        return @current_user if instance_variable_defined?(:@current_user)
-        unless doorkeeper_token.present? &&
-            doorkeeper_token.resource_owner_id.present?
-          return (@current_user = nil)
-        end
-        @current_user = User.find(doorkeeper_token.resource_owner_id)
+
+      def filter_by_user
+        current_user
       end
       
-      def filter_by_user
-        if admin_access?
-          if (user_id = request.query_parameters[:user_id] ||
-              request.query_parameters[:user]).present?
-            return User.where(id: user_id.to_i).first || current_user
-          elsif (username = request.query_parameters[:username]).present?
-            return User.where(username: username.to_s).first || current_user
-          elsif (user_email = request.query_parameters[:user_email]).present?
-            return User.where(email: user_email.to_s).first || current_user
-          end
-        end
-        current_user
+      def current_user
+        nil
       end
       
       def common_headers
@@ -793,8 +773,9 @@ module ModelApi
         column_metadata = klass.columns_hash[column.to_s]
         case column_metadata.try(:type)
         when :date, :datetime, :time, :timestamp
-          if (user_tz = current_user.try(:preference).try(:time_zone)).present?
-            time_zone = ActiveSupport::TimeZone.new(user_tz)
+          user = current_user
+          if user.respond_to?(:time_zone) && (user_time_zone = user.time_zone).present?
+            time_zone = ActiveSupport::TimeZone.new(user_time_zone)
           end
           time_zone ||= ActiveSupport::TimeZone.new('Eastern Time (US & Canada)')
           return time_zone.parse(value.to_s).try(:to_s, :db)
