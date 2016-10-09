@@ -62,18 +62,42 @@ end
 
 ## Exposing a Resource
 
-To expose a resource, start by adding the resource routes to your `routes.rb` file:
+To expose a resource, start by defining the underlying model for that resource: 
 ``` ruby
-  namespace :api do
-    namespace :v1 do
-      resource :books, except: [:new, :edit], param: :book_id
-    end
-  end
-```
+class Book < ActiveRecord::Base
+  include ModelApi::Model
+  
+  # Valication rules are utilized by model-api to validate requests
+  validates :name, presence: true, uniqueness: true, length: { maximum: 50 }
+  validates :description, length: { maximum: 250 }
+  validates :isbn, presence: true, uniqueness: true, length: { maximum: 13 }
+  
+  # Define the attributes exposed via the REST API.
+  api_attributes \
+      id: { filter: true, sort: true },
+      name: { filter: true, sort: true },
+      description: {},
+      isbn: { filter: true, sort: true,
+          parse: ->(v) { v.to_s.gsub(%r{[^\d]+}, '') },
+          render: ->(v) { "#{v[0..2]}-#{v[3]}-#{v[4..5]}-#{v[6..11]}-#{v[12..-1]}" }
+      },
+      created_at: { read_only: true, filter: true },
+      updated_at: { read_only: true, filter: true }
 
+end
+```
+An explanation of the options used in the `api_attributes` example above:
+* `filter` - Allow filtering by query string parameters (e.g. `?id=123`).
+* `sort` - Allow use of this column in the sort_by parameter.
+* `read_only` - Disallow column updates (via `POST`, `PUT`, or `PATCH`).
+* `parse` - Method name (e.g. `:to_i`) or proc / lambda for pre-processing incoming payload values.
+  *(The example lambda removes any non-digit values (such as dashes) from supplied ISBN values.)*
+* `render` - Method name or proc / lambda that formats values returned in response payloads.
+  *(The example lambda formats the 13-digit ISBN number using the typical dash convention.)*
+ 
 Next, define the base controller class that all of your API controllers will extend 
 (for this example, in `app/controllers/api/v1/base_controller.rb`):
-``` ruby
+```ruby
   module Api
     module V1
       class BaseController < ActionController::Base
@@ -113,6 +137,15 @@ Next, define the base controller class that all of your API controllers will ext
           { 'terms-of-service' => URI(url_for(controller: '/home', action: :terms_of_service)) }
         end
       end
+    end
+  end
+```
+
+Add the resource routes to your `routes.rb` file:
+```ruby
+  namespace :api do
+    namespace :v1 do
+      resource :books, except: [:new, :edit], param: :book_id
     end
   end
 ```
