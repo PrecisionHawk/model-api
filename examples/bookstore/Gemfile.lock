@@ -1,9 +1,9 @@
 PATH
   remote: ../..
   specs:
-    model-api (0.8.4)
-      open-api (>= 0.8.2)
-      rails (>= 4.0)
+    model-api (0.8.5)
+      open-api (~> 0.8.2)
+      rails (~> 4.0)
 
 GEM
   remote: https://rubygems.org/

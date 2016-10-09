@@ -3,7 +3,7 @@ $:.unshift lib unless $:.include?(lib)
 
 Gem::Specification.new do |s|
   s.name = 'model-api'
-  s.version = '0.8.4'
+  s.version = '0.8.5'
   s.summary = 'Create easy REST API\'s using metadata inside your ActiveRecord models'
   s.description = 'Ruby gem allowing Ruby on Rails developers to create REST API’s using ' \
       'metadata defined inside their ActiveRecord models.'
@@ -16,9 +16,8 @@ Gem::Specification.new do |s|
 
   s.require_path = "lib"
 
-  s.add_dependency "rails", ">= 4.0"
-  s.add_dependency "open-api", ">= 0.8.2"
+  s.add_dependency "rails", "~> 4.0"
+  s.add_dependency "open-api", "~> 0.8.2"
 
-  s.add_development_dependency "rspec-rails"
-  s.add_development_dependency "factory_girl"
+  s.add_development_dependency "rspec-rails", "~> 3.5", ">= 3.5.2"
 end
