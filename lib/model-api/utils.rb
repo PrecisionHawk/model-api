@@ -216,7 +216,7 @@ module ModelApi
       end
 
       def format_value(value, attr_metadata, opts)
-        ModelApi::Utils.transform_value(value, attr_metadata[:render], opts)
+        transform_value(value, attr_metadata[:render], opts)
       rescue Exception => e
         Rails.logger.warn 'Error encountered formatting API output ' \
               "(\"#{e.message}\") for value: \"#{value}\"" \
@@ -265,8 +265,158 @@ module ModelApi
         obj = controller.response_body.first if controller.response_body.is_a?(Array)
         obj = (JSON.parse(obj) rescue nil) if obj.present?
         opts = opts.merge(generate_body_only: true)
-        controller.response_body = [ModelApi::Renderer.render(controller,
-            ModelApi::Utils.ext_value(obj), opts)]
+        controller.response_body = [ModelApi::Renderer.render(controller, ext_value(obj), opts)]
+      end
+
+      def resolve_assoc_obj(parent_obj, assoc_name, assoc_payload, opts = {})
+        klass = parent_obj.class
+        model_metadata = opts[:model_metadata] || model_metadata(klass)
+        assoc = klass.reflect_on_association(assoc_name)
+        fail "Unrecognized association '#{assoc_name}' on class '#{klass.name}'" if assoc.nil?
+        do_resolve_assoc_obj(model_metadata, assoc, klass, assoc_payload, parent_obj, opts)
+      end
+
+      def update_api_attr(obj, attr, value, opts = {})
+        attr = attr.to_sym
+        attr_metadata = get_attr_metadata(obj, attr, opts)
+        begin
+          value = transform_value(value, attr_metadata[:parse], opts)
+        rescue Exception => e
+          Rails.logger.warn "Error encountered parsing API input for attribute \"#{attr}\" " \
+                  "(\"#{e.message}\"): \"#{value.to_s.first(1000)}\" ... using raw value instead."
+        end
+        begin
+          if attr_metadata[:type] == :association && attr_metadata[:parse].blank?
+            attr_metadata = opts[:attr_metadata]
+            assoc = attr_metadata[:association]
+            if assoc.macro == :has_many
+              update_has_many_assoc(obj, attr, value, opts)
+            elsif assoc.macro == :belongs_to
+              update_belongs_to_assoc(obj, attr, value, opts)
+            else
+              add_ignored_field(opts[:ignored_fields], attr, value, attr_metadata)
+            end
+          else
+            set_api_attr(obj, attr, value, opts)
+          end
+        rescue Exception => e
+          handle_api_setter_exception(e, obj, attr_metadata, opts)
+        end
+      end
+
+      def find_by_id_attrs(id_attributes, assoc_class, assoc_payload)
+        return nil unless id_attributes.present?
+        id_attributes.each do |id_attr_set|
+          query = nil
+          id_attr_set.each do |id_attr|
+            unless assoc_payload.include?(id_attr.to_s)
+              query = nil
+              break
+            end
+            query = (query || assoc_class).where(id_attr => assoc_payload[id_attr.to_s])
+          end
+          return query unless query.nil?
+        end
+        nil
+      end
+
+      def add_ignored_field(ignored_fields, attr, value, attr_metadata)
+        return unless ignored_fields.is_a?(Array)
+        attr_metadata ||= {}
+        external_attr = ext_attr(attr, attr_metadata)
+        return unless external_attr.present?
+        ignored_fields << { external_attr => value }
+      end
+
+      def apply_updates(obj, req_obj, operation, opts = {})
+        opts = opts.merge(object: opts[:object] || obj)
+        metadata = filtered_ext_attrs(opts[:api_attr_metadata] ||
+            filtered_attrs(obj, operation, opts), operation, opts)
+        set_context_attrs(obj, opts)
+        req_obj.each do |attr, value|
+          attr = attr.to_sym
+          attr_metadata = metadata[attr]
+          unless attr_metadata.present?
+            add_ignored_field(opts[:ignored_fields], attr, value, attr_metadata)
+            next
+          end
+          update_api_attr(obj, attr, value, opts.merge(attr_metadata: attr_metadata))
+        end
+      end
+
+      def extract_error_msgs(obj, opts = {})
+        object_errors = []
+        attr_prefix = opts[:attr_prefix] || ''
+        api_metadata = opts[:api_attr_metadata] || api_attrs(obj.class)
+        obj.errors.each do |attr, attr_errors|
+          attr_errors = [attr_errors] unless attr_errors.is_a?(Array)
+          attr_errors.each do |error|
+            attr_metadata = api_metadata[attr] || {}
+            qualified_attr = "#{attr_prefix}#{ext_attr(attr, attr_metadata)}"
+            assoc_errors = nil
+            if attr_metadata[:type] == :association
+              assoc_errors = extract_assoc_error_msgs(obj, attr, opts.merge(
+                  attr_metadata: attr_metadata))
+            end
+            if assoc_errors.present?
+              object_errors += assoc_errors
+            else
+              error_hash = {}
+              error_hash[:object] = attr_prefix if attr_prefix.present?
+              error_hash[:attribute] = qualified_attr unless attr == :base
+              object_errors << error_hash.merge(error: error,
+                  message: (attr == :base ? error : "#{qualified_attr} #{error}"))
+            end
+          end
+        end
+        object_errors
+      end
+      
+      def save_obj(obj, opts = {})
+        operation = opts[:operation] || (obj.new_record? ? :create : :update)
+        model_metadata = opts.delete(:model_metadata) || model_metadata(obj.class)
+        before_validate_callbacks(model_metadata, obj, opts)
+        validate_operation(obj, operation, opts.merge(model_metadata: model_metadata))
+        validate_preserving_existing_errors(obj)
+        new_obj = obj.new_record?
+        before_save_callbacks(model_metadata, obj, new_obj, opts)
+        obj.instance_variable_set(:@readonly, false) if obj.instance_variable_get(:@readonly)
+        successful = obj.save unless obj.errors.present?
+        after_save_callbacks(model_metadata, obj, new_obj, opts) if successful
+        successful
+      end
+
+      def validate_operation(obj, operation, opts = {})
+        klass = find_class(obj, opts)
+        model_metadata = opts[:model_metadata] || model_metadata(klass)
+        return nil unless operation.present?
+        opts = opts.frozen? ? opts : opts.dup.freeze
+        if obj.nil?
+          invoke_callback(model_metadata[:"validate_#{operation}"], opts)
+        else
+          invoke_callback(model_metadata[:"validate_#{operation}"], obj, opts)
+        end
+      end
+
+      def process_collection_includes(collection, opts = {})
+        klass = find_class(collection, opts)
+        metadata = filtered_ext_attrs(klass, opts[:operation] || :index, opts)
+        model_metadata = opts[:model_metadata] || model_metadata(klass)
+        includes = []
+        if (metadata_includes = model_metadata[:collection_includes]).is_a?(Array)
+          includes += metadata_includes.map(&:to_sym)
+        end
+        metadata.each do |_attr, attr_metadata|
+          includes << attr_metadata[:key] if attr_metadata[:type] == :association
+        end
+        includes = includes.compact.uniq
+        collection = collection.includes(includes) if includes.present?
+        collection
+      end
+
+      def find_class(obj, opts = {})
+        return nil if obj.nil?
+        opts[:class] || (obj.respond_to?(:klass) ? obj.klass : obj.class)
       end
 
       private
@@ -279,8 +429,7 @@ module ModelApi
           test_value = test_value[filter_value]
         end
         if test_value.respond_to?(:call)
-          return ModelApi::Utils.invoke_callback(test_value, klass,
-              opts.merge(filter_type => filter_value).freeze)
+          return invoke_callback(test_value, klass, opts.merge(filter_type => filter_value).freeze)
         end
         filter_value == test_value
       end
@@ -386,6 +535,256 @@ module ModelApi
           return false if action_filter(obj, action, except, opts.merge(filter_type: :action))
         end
         true
+      end
+
+      def update_has_many_assoc(obj, attr, value, opts = {})
+        attr_metadata = opts[:attr_metadata]
+        assoc = attr_metadata[:association]
+        assoc_class = assoc.class_name.constantize
+        model_metadata = model_metadata(assoc_class)
+        value_array = value.to_a rescue nil
+        unless value_array.is_a?(Array)
+          obj.errors.add(attr, 'must be supplied as an array of objects')
+          return
+        end
+        opts = opts.merge(model_metadata: model_metadata)
+        opts[:ignored_fields] = [] if opts.include?(:ignored_fields)
+        assoc_objs = []
+        value_array.each_with_index do |assoc_payload, index|
+          opts[:ignored_fields].clear if opts.include?(:ignored_fields)
+          assoc_objs << update_has_many_assoc_obj(obj, assoc, assoc_class, assoc_payload,
+              opts.merge(model_metadata: model_metadata))
+          if opts[:ignored_fields].present?
+            external_attr = ext_attr(attr, attr_metadata)
+            opts[:ignored_fields] << { "#{external_attr}[#{index}]" => opts[:ignored_fields] }
+          end
+        end
+        set_api_attr(obj, attr, assoc_objs, opts)
+      end
+
+      def update_has_many_assoc_obj(parent_obj, assoc, assoc_class, assoc_payload, opts = {})
+        model_metadata = opts[:model_metadata] || model_metadata(assoc_class)
+        assoc_obj, assoc_oper, assoc_opts = resolve_has_many_assoc_obj(model_metadata, assoc,
+            assoc_class, assoc_payload, parent_obj, opts)
+        if (inverse_assoc = assoc.options[:inverse_of]).present? &&
+            assoc_obj.respond_to?("#{inverse_assoc}=")
+          assoc_obj.send("#{inverse_assoc}=", parent_obj)
+        elsif !parent_obj.new_record? && assoc_obj.respond_to?("#{assoc.foreign_key}=")
+          assoc_obj.send("#{assoc.foreign_key}=", obj.id)
+        end
+        apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
+        invoke_callback(model_metadata[:after_initialize], assoc_obj,
+            assoc_opts.merge(operation: assoc_oper).freeze)
+        assoc_obj
+      end
+
+      def resolve_has_many_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+          parent_obj, opts = {})
+        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+            parent_obj, opts)
+        if assoc_obj.new_record?
+          assoc_oper = :create
+          opts[:create_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
+              assoc_class, :create, opts))
+          assoc_opts = opts[:create_opts]
+        else
+          assoc_oper = :update
+          opts[:update_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
+              assoc_class, :update, opts))
+    
+          assoc_opts = opts[:update_opts]
+        end
+        [assoc_obj, assoc_oper, assoc_opts]
+      end
+
+      def update_belongs_to_assoc(parent_obj, attr, assoc_payload, opts = {})
+        unless assoc_payload.is_a?(Hash)
+          parent_obj.errors.add(attr, 'must be supplied as an object')
+          return
+        end
+        attr_metadata = opts[:attr_metadata]
+        assoc = attr_metadata[:association]
+        assoc_class = assoc.class_name.constantize
+        model_metadata = model_metadata(assoc_class)
+        assoc_obj, assoc_oper, assoc_opts = resolve_belongs_to_assoc_obj(model_metadata, assoc,
+            assoc_class, assoc_payload, parent_obj, opts)
+        apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
+        invoke_callback(model_metadata[:after_initialize], assoc_obj,
+            opts.merge(operation: assoc_oper).freeze)
+        if assoc_opts[:ignored_fields].present?
+          external_attr = ext_attr(attr, attr_metadata)
+          opts[:ignored_fields] << { external_attr.to_s => assoc_opts[:ignored_fields] }
+        end
+        set_api_attr(parent_obj, attr, assoc_obj, opts)
+      end
+
+      def resolve_belongs_to_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+          parent_obj, opts = {})
+        assoc_opts = opts[:ignored_fields].is_a?(Array) ? opts.merge(ignored_fields: []) : opts
+        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+            parent_obj, opts)
+        assoc_oper = assoc_obj.new_record? ? :create : :update
+        assoc_opts = assoc_opts.merge(
+            api_attr_metadata: filtered_attrs(assoc_class, assoc_oper, opts))
+        return [assoc_obj, assoc_oper, assoc_opts]
+      end
+
+      def do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload, parent_obj,
+          opts = {})
+        if opts[:resolve].try(:respond_to?, :call)
+          assoc_obj = invoke_callback(opts[:resolve], assoc_payload, opts.merge(
+              parent: parent_obj, association: assoc, association_metadata: model_metadata))
+        else
+          assoc_obj = find_by_id_attrs(model_metadata[:id_attributes], assoc_class, assoc_payload)
+          assoc_obj = assoc_obj.first unless assoc_obj.nil? || assoc_obj.count != 1
+          assoc_obj ||= assoc_class.new
+        end
+        assoc_obj
+      end
+
+      def set_api_attr(obj, attr, value, opts)
+        attr = attr.to_sym
+        attr_metadata = get_attr_metadata(obj, attr, opts)
+        internal_field = attr_metadata[:key] || attr
+        setter = attr_metadata[:setter] || "#{(internal_field)}="
+        unless obj.respond_to?(setter)
+          Rails.logger.warn "Error encountered assigning API input for attribute \"#{attr}\" " \
+                  '(setter not found): skipping.'
+          add_ignored_field(opts[:ignored_fields], attr, value, attr_metadata)
+          return
+        end
+        obj.send(setter, value)
+      end
+
+      def handle_api_setter_exception(e, obj, attr_metadata, opts = {})
+        return unless attr_metadata.is_a?(Hash)
+        on_exception = attr_metadata[:on_exception]
+        fail e unless on_exception.present?
+        on_exception = { Exception => on_exception } unless on_exception.is_a?(Hash)
+        opts = opts.frozen? ? opts : opts.dup.freeze
+        on_exception.each do |klass, handler|
+          klass = klass.to_s.constantize rescue nil unless klass.is_a?(Class)
+          next unless klass.is_a?(Class) && e.is_a?(klass)
+          if handler.respond_to?(:call)
+            invoke_callback(handler, obj, e, opts)
+          elsif handler.present?
+            # Presume handler is an error message in this case
+            obj.errors.add(attr_metadata[:key], handler.to_s)
+          else
+            add_ignored_field(opts[:ignored_fields], nil, opts[:value],
+                attr_metadata)
+          end
+          break
+        end
+      end
+
+      def get_attr_metadata(obj, attr, opts)
+        attr_metadata = opts[:attr_metadata]
+        return attr_metadata unless attr_metadata.nil?
+        operation = opts[:operation] || :update
+        metadata = filtered_ext_attrs(opts[:api_attr_metadata] ||
+            filtered_attrs(obj, operation, opts), operation, opts)
+        metadata[attr] || {}
+      end
+
+      def set_context_attrs(obj, opts = {})
+        klass = (obj.class < ActiveRecord::Base ? obj.class : nil)
+        (opts[:context] || {}).each do |key, value|
+          begin
+            setter = "#{key}="
+            next unless obj.respond_to?(setter)
+            if (column = klass.try(:columns_hash).try(:[], key.to_s)).present?
+              case column.type
+              when :integer, :primary_key then
+                obj.send("#{key}=", value.to_i)
+              when :decimal, :float then
+                obj.send("#{key}=", value.to_f)
+              else
+                obj.send(setter, value.to_s)
+              end
+            else
+              obj.send(setter, value.to_s)
+            end
+          rescue Exception => e
+            Rails.logger.warn "Error encountered assigning context parameter #{key} to " \
+              "'#{value}' (skipping): \"#{e.message}\")."
+          end
+        end
+      end
+
+      # rubocop:disable Metrics/MethodLength
+      def extract_assoc_error_msgs(obj, attr, opts)
+        object_errors = []
+        attr_metadata = opts[:attr_metadata] || {}
+        processed_assoc_objects = {}
+        assoc = attr_metadata[:association]
+        assoc_class = assoc.class_name.constantize
+        external_attr = ext_attr(attr, attr_metadata)
+        attr_metadata_create = attr_metadata_update = nil
+        if assoc.macro == :has_many
+          obj.send(attr).each_with_index do |assoc_obj, index|
+            next if processed_assoc_objects[assoc_obj]
+            processed_assoc_objects[assoc_obj] = true
+            attr_prefix = "#{external_attr}[#{index}]."
+            if assoc_obj.new_record?
+              attr_metadata_create ||= filtered_attrs(assoc_class, :create, opts)
+              object_errors += extract_error_msgs(assoc_obj, opts.merge(
+                  attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_create))
+            else
+              attr_metadata_update ||= filtered_attrs(assoc_class, :update, opts)
+              object_errors += extract_error_msgs(assoc_obj, opts.merge(
+                  attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_update))
+            end
+          end
+        else
+          assoc_obj = obj.send(attr)
+          return object_errors unless assoc_obj.present? && !processed_assoc_objects[assoc_obj]
+          processed_assoc_objects[assoc_obj] = true
+          attr_prefix = "#{external_attr}->"
+          if assoc_obj.new_record?
+            attr_metadata_create ||= filtered_attrs(assoc_class, :create, opts)
+            object_errors += extract_error_msgs(assoc_obj, opts.merge(
+                attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_create))
+          else
+            attr_metadata_update ||= filtered_attrs(assoc_class, :update, opts)
+            object_errors += extract_error_msgs(assoc_obj, opts.merge(
+                attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_update))
+          end
+        end
+        object_errors
+      end
+      # rubocop:enable Metrics/MethodLength
+
+      def before_validate_callbacks(model_metadata, obj, opts)
+        
+        invoke_callback(model_metadata[:before_validate], obj, opts.dup)
+        invoke_callback(opts[:before_validate], obj, opts.dup)
+      end
+
+      def before_save_callbacks(model_metadata, obj, new_obj, opts)
+        invoke_callback(model_metadata[:before_create], obj, opts.dup) if new_obj
+        invoke_callback(opts[:before_create], obj, opts.dup) if new_obj
+        invoke_callback(model_metadata[:before_save], obj, opts.dup)
+        invoke_callback(opts[:before_save], obj, opts.dup)
+      end
+
+      def after_save_callbacks(model_metadata, obj, new_obj, opts)
+        invoke_callback(model_metadata[:after_create], obj, opts.dup) if new_obj
+        invoke_callback(opts[:after_create], obj, opts.dup) if new_obj
+        invoke_callback(model_metadata[:after_save], obj, opts.dup)
+        invoke_callback(opts[:after_save], obj, opts.dup)
+      end
+
+      def validate_preserving_existing_errors(obj)
+        if obj.errors.present?
+          errors = obj.errors.messages.dup
+          obj.valid?
+          errors = obj.errors.messages.merge(errors)
+          obj.errors.clear
+          errors.each { |field, error| obj.errors.add(field, error) }
+        else
+          obj.valid?
+        end
       end
     end
   end
