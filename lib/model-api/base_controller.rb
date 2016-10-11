@@ -982,12 +982,16 @@ module ModelApi
           ModelApi::Utils.invoke_callback(model_metadata[:before_validate], obj, opts.dup)
           validate_operation(obj, operation, opts)
           validate_preserving_existing_errors(obj)
+          new_obj = obj.new_record?
+          ModelApi::Utils.invoke_callback(model_metadata[:before_create], obj, opts.dup) if new_obj
           ModelApi::Utils.invoke_callback(model_metadata[:before_save], obj, opts.dup)
           obj.instance_variable_set(:@readonly, false) if obj.instance_variable_get(:@readonly)
           successful = obj.save unless obj.errors.present?
           if successful
             suggested_response_status = :ok
             object_errors = []
+            ModelApi::Utils.invoke_callback(model_metadata[:after_create], obj, opts.dup) if new_obj
+            ModelApi::Utils.invoke_callback(model_metadata[:after_save], obj, opts.dup)
           else
             suggested_response_status = :bad_request
             object_errors = extract_msgs_for_error(obj, opts.merge(api_attr_metadata: metadata))
