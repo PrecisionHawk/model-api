@@ -162,6 +162,7 @@ module ModelApi
       
       def prepare_options(opts)
         opts = opts.symbolize_keys
+        opts[:model_class] = model_class
         opts[:user] = user = filter_by_user
         opts[:user_id] = user.try(:id)
         opts[:admin] = user.try(:admin_api_user?) ? true : false

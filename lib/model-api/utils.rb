@@ -268,12 +268,13 @@ module ModelApi
         controller.response_body = [ModelApi::Renderer.render(controller, ext_value(obj), opts)]
       end
 
-      def resolve_assoc_obj(parent_obj, assoc_name, assoc_payload, opts = {})
+      def resolve_assoc_obj(parent_obj, assoc, assoc_payload, opts = {})
         klass = parent_obj.class
-        model_metadata = opts[:model_metadata] || model_metadata(klass)
-        assoc = klass.reflect_on_association(assoc_name)
-        fail "Unrecognized association '#{assoc_name}' on class '#{klass.name}'" if assoc.nil?
-        do_resolve_assoc_obj(model_metadata, assoc, klass, assoc_payload, parent_obj, opts)
+        assoc = klass.reflect_on_association(assoc) if assoc.is_a?(Symbol) || assoc.is_a?(String)
+        fail "Unrecognized association '#{assoc}' on class '#{klass.name}'" if assoc.nil?
+        assoc_class = assoc.class_name.constantize
+        model_metadata = model_metadata(assoc_class)
+        do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload, parent_obj, opts)
       end
 
       def update_api_attr(obj, attr, value, opts = {})
@@ -581,7 +582,7 @@ module ModelApi
       def resolve_has_many_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
           parent_obj, opts = {})
         assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
-            parent_obj, opts)
+            parent_obj, opts.merge(auto_create: true))
         if assoc_obj.new_record?
           assoc_oper = :create
           opts[:create_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
@@ -622,7 +623,7 @@ module ModelApi
           parent_obj, opts = {})
         assoc_opts = opts[:ignored_fields].is_a?(Array) ? opts.merge(ignored_fields: []) : opts
         assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
-            parent_obj, opts)
+            parent_obj, opts.merge(auto_create: true))
         assoc_oper = assoc_obj.new_record? ? :create : :update
         assoc_opts = assoc_opts.merge(
             api_attr_metadata: filtered_attrs(assoc_class, assoc_oper, opts))
@@ -637,7 +638,7 @@ module ModelApi
         else
           assoc_obj = find_by_id_attrs(model_metadata[:id_attributes], assoc_class, assoc_payload)
           assoc_obj = assoc_obj.first unless assoc_obj.nil? || assoc_obj.count != 1
-          assoc_obj ||= assoc_class.new
+          assoc_obj ||= assoc_class.new if opts[:auto_create]
         end
         assoc_obj
       end
