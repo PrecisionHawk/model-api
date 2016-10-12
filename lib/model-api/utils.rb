@@ -227,14 +227,14 @@ module ModelApi
       def not_found_response_body(opts = {})
         response =
             {
-              successful: false,
-              status: :not_found,
-              status_code: http_status_code(:not_found),
-              errors: [{
-                error: opts[:error] || 'No resource found',
-                message: opts[:message] || 'No resource found at the path ' \
+                successful: false,
+                status: :not_found,
+                status_code: http_status_code(:not_found),
+                errors: [{
+                    error: opts[:error] || 'No resource found',
+                    message: opts[:message] || 'No resource found at the path ' \
                     'provided or matching the criteria specified'
-              }]
+                }]
             }
         response.to_json(opts)
       end
@@ -246,9 +246,9 @@ module ModelApi
 
       def common_http_headers
         {
-          'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate',
-          'Pragma' => 'no-cache',
-          'Expires' => 'Fri, 01 Jan 1990 00:00:00 GMT'
+            'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => 'Fri, 01 Jan 1990 00:00:00 GMT'
         }
       end
 
@@ -592,7 +592,7 @@ module ModelApi
           assoc_oper = :update
           opts[:update_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
               assoc_class, :update, opts))
-    
+
           assoc_opts = opts[:update_opts]
         end
         [assoc_obj, assoc_oper, assoc_opts]
@@ -754,6 +754,7 @@ module ModelApi
         end
         object_errors
       end
+
       # rubocop:enable Metrics/MethodLength
 
       def before_validate_callbacks(model_metadata, obj, opts)

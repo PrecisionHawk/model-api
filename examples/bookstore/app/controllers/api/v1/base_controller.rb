@@ -9,12 +9,12 @@ module Api
       #  parameters, HTTP headers, and HTTP response codes.
       open_api_controller \
           query_string: {
-              access_token: {
-                  type: :string,
-                  description: 'OAuth 2 access token query parameter',
-                  required: false
-              }
-          },
+          access_token: {
+              type: :string,
+              description: 'OAuth 2 access token query parameter',
+              required: false
+          }
+      },
           headers: {
               'Authorization' => {
                   type: :string,

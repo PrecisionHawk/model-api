@@ -6,7 +6,7 @@ class CreateBooks < ActiveRecord::Migration
       t.string :isbn, limit: 13
       t.timestamps
     end
-
+    
     add_index :books, :name, unique: true
     add_index :books, :description
     add_index :books, :isbn, unique: true

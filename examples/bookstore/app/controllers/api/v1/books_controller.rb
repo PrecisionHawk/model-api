@@ -24,6 +24,7 @@ module Api
       # GET /api/v1/books endpoint OpenAPI doc metadata and implementation
       add_open_api_action :index, :index, base_api_options.merge(
           description: 'Retrieve list of available books')
+      
       def index
         render_collection collection_query, base_api_options
       end
@@ -31,6 +32,7 @@ module Api
       # GET /api/v1/books/:book_id endpoint OpenAPI doc metadata and implementation
       add_open_api_action :show, :show, base_api_options.merge(
           description: 'Retrieve details for a specific book')
+      
       def show
         render_object object_query.first, base_api_options
       end
@@ -38,6 +40,7 @@ module Api
       # POST /api/v1/books endpoint OpenAPI doc metadata and implementation
       add_open_api_action :create, :create, base_api_options.merge(
           description: 'Create a new book')
+      
       def create
         do_create base_api_options
       end
@@ -45,6 +48,7 @@ module Api
       # PATCH/PUT api/v1/books/:book_id endpoint OpenAPI doc metadata and implementation
       add_open_api_action :update, :update, base_api_options.merge(
           description: 'Update an existing book')
+      
       def update
         do_update object_query, base_api_options
       end
@@ -52,6 +56,7 @@ module Api
       # DELETE /api/v1/books/:book_id endpoint OpenAPI doc metadata and implementation
       add_open_api_action :destroy, :destroy, base_api_options.merge(
           description: 'Delete an existing book')
+      
       def destroy
         do_destroy object_query, base_api_options
       end

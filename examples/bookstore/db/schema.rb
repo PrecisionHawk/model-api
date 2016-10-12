@@ -12,15 +12,15 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema.define(version: 20161007185311) do
-
+  
   create_table "books", force: true do |t|
-    t.string   "name",        limit: 50,  null: false
-    t.string   "description", limit: 250
-    t.string   "isbn",        limit: 13
+    t.string "name", limit: 50, null: false
+    t.string "description", limit: 250
+    t.string "isbn", limit: 13
     t.datetime "created_at"
     t.datetime "updated_at"
   end
-
+  
   add_index "books", ["created_at"], name: "index_books_on_created_at", using: :btree
   add_index "books", ["description"], name: "index_books_on_description", using: :btree
   add_index "books", ["isbn"], name: "index_books_on_isbn", unique: true, using: :btree
