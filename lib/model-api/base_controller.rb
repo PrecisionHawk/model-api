@@ -13,15 +13,15 @@ module ModelApi
         base_api_options.merge(admin_only: true)
       end
     end
-
+    
     class << self
       def included(base)
         base.extend(ClassMethods)
-    
+        
         base.send(:include, InstanceMethods)
-    
+        
         base.send(:before_filter, :common_headers)
-    
+        
         base.send(:rescue_from, Exception, with: :unhandled_exception)
         base.send(:respond_to, :json, :xml)
       end
@@ -160,7 +160,7 @@ module ModelApi
         {}
       end
       
-      def prepare_options(opts)
+      def initialize_options(opts)
         opts = opts.symbolize_keys
         opts[:model_class] = model_class
         opts[:user] = user = filter_by_user
@@ -170,6 +170,12 @@ module ModelApi
         opts[:collection_link_options] = opts[:object_link_options] =
             request.params.to_h.symbolize_keys
         opts
+      end
+      
+      # Default implementation, can be hidden by API controller classes to include any
+      # application-specific options
+      def prepare_options(opts)
+        initialize_options(opts)
       end
       
       def id_info(opts = {})
@@ -266,7 +272,7 @@ module ModelApi
       def ensure_admin
         user = current_user
         return true if user.respond_to?(:admin_api_user?) && user.admin_api_user?
-
+        
         # Mask presence of endpoint if user is not authorized to access it
         not_found
         false
@@ -405,7 +411,7 @@ module ModelApi
         simple_error(status, errors, opts)
         false
       end
-
+      
       def filter_by_user
         current_user
       end
@@ -895,7 +901,7 @@ module ModelApi
           collection_links[:first] = [coll_route, { page: 1 }]
           collection_links[:last] = [coll_route, { page: last_page }]
         end
-    
+        
         def object_from_req_body(root_elem, req_body, format)
           if format == :json
             request_obj = req_body
@@ -911,7 +917,7 @@ module ModelApi
           fail 'Invalid request format' unless request_obj.present?
           request_obj
         end
-
+        
         def process_updated_model_save(obj, operation, opts = {})
           opts = opts.dup
           opts[:operation] = operation
@@ -936,10 +942,10 @@ module ModelApi
           end
           [suggested_response_status, object_errors]
         end
-    
+        
         def process_object_destroy(obj, operation, opts)
           soft_delete = obj.errors.present? ? false : object_destroy(obj, opts)
-      
+          
           if obj.errors.blank? && (soft_delete || obj.destroyed?)
             response_status = :ok
             object_errors = []
@@ -956,10 +962,10 @@ module ModelApi
               }
             end
           end
-      
+          
           [response_status, object_errors]
         end
-
+        
         def object_destroy(obj, opts = {})
           klass = ModelApi::Utils.find_class(obj)
           object_id = obj.send(opts[:id_attribute] || :id)
@@ -983,7 +989,7 @@ module ModelApi
           Rails.logger.warn "Error destroying #{klass.name} \"#{object_id}\": \"#{e.message}\")."
           false
         end
-
+        
         def apply_context(query, opts = {})
           context = opts[:context]
           return query if context.nil?
@@ -994,7 +1000,7 @@ module ModelApi
           end
           query
         end
-
+        
         def class_or_sti_subclass(klass, req_body, operation, opts = {})
           metadata = ModelApi::Utils.filtered_attrs(klass, :create, opts)
           if operation == :create && (attr_metadata = metadata[:type]).is_a?(Hash) &&
