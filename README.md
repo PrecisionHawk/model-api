@@ -17,6 +17,13 @@ Developing REST API's in a conventional manner involves many challenges.  Betwee
     sync with what your API actually supports.
   * Reduce the lines of code required to implement your Rails-based Rest API dramatically.
 
+## Guides
+This README file is intended to provide a brief introduction.  For more detailed information,
+the following guides are available:
+* [Guide to `api_metadata` options](doc/api_metadata.md)
+* [Guide to `model_metadata` options](doc/api_metadata.md)
+* [Managing data access in `model-api`](doc/api_metadata.md)
+
 ## Installation
  
 Put this in your Gemfile:
