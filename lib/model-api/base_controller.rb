@@ -168,7 +168,7 @@ module ModelApi
         opts[:admin] = user.try(:admin_api_user?) ? true : false
         opts[:admin_content] = admin_content?
         opts[:collection_link_options] = opts[:object_link_options] =
-            request.query_parameters.to_h.symbolize_keys
+            request.params.to_h.symbolize_keys
         opts
       end
       
@@ -310,7 +310,7 @@ module ModelApi
       
       # Indicates whether API should render administrator-only content in API responses
       def admin_content?
-        param = request.query_parameters[:admin]
+        param = request.params[:admin]
         param.present? && param.to_i != 0 && admin_access?
       end
       
@@ -478,9 +478,7 @@ module ModelApi
       private
       
       def find_filter_params
-        request.query_parameters.reject do |param, _value|
-          %w(access_token sort_by admin).include?(param)
-        end
+        request.params.reject { |p, _v| %w(access_token sort_by admin).include?(p) }
       end
       
       def find_sort_params
