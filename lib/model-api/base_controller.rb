@@ -128,6 +128,7 @@ module ModelApi
       end
 
       def save_and_render_object(obj, operation, opts = {})
+        opts = prepare_options(opts)
         status, msgs = Utils.process_updated_model_save(obj, operation, opts)
         add_hateoas_links_for_updated_object(operation, opts)
         successful = ModelApi::Utils.response_successful?(status)
@@ -161,20 +162,26 @@ module ModelApi
       end
 
       def initialize_options(opts)
+        return opts if opts[:options_initialized]
         opts = opts.symbolize_keys
-        opts[:model_class] = model_class
-        opts[:user] = user = filter_by_user
-        opts[:user_id] = user.try(:id)
-        opts[:admin] = user.try(:admin_api_user?) ? true : false
-        opts[:admin_content] = admin_content?
-        opts[:collection_link_options] = opts[:object_link_options] =
-            request.params.to_h.symbolize_keys
+        opts[:model_class] ||= model_class
+        opts[:user] ||= filter_by_user
+        opts[:user_id] ||= opts[:user].try(:id)
+        opts[:admin_user] ||= admin_user?(opts)
+        opts[:admin] ||= admin?(opts)
+        unless opts.include?(:collection_link_options) && opts.include?(:object_link_options)
+          default_link_options = request.params.to_h.symbolize_keys
+          opts[:collection_link_options] ||= default_link_options
+          opts[:object_link_options] ||= default_link_options
+        end
+        opts[:options_initialized] ||= true
         opts
       end
 
       # Default implementation, can be hidden by API controller classes to include any
       # application-specific options
       def prepare_options(opts)
+        return opts if opts[:options_initialized]
         initialize_options(opts)
       end
 
@@ -187,11 +194,13 @@ module ModelApi
       end
 
       def api_query(opts = {})
+        opts = prepare_options(opts)
         klass = opts[:model_class] || model_class
+        model_metadata = opts[:model_metadata] || ModelApi::Utils.model_metadata(klass)
         unless klass < ActiveRecord::Base
           fail 'Expected model class to be an ActiveRecord::Base subclass'
         end
-        query = klass.all
+        query = ModelApi::Utils.invoke_callback(model_metadata[:base_query], opts) || klass.all
         if (deleted_col = klass.columns_hash['deleted']).present?
           case deleted_col.type
           when :boolean
@@ -208,7 +217,7 @@ module ModelApi
         coll_query = Utils.apply_context(api_query(opts), opts)
         id_info = opts[:id_info] || id_info(opts)
         query = coll_query.where(id_info[:id_attribute] => id_info[:id_value])
-        if !admin_access?
+        if !admin_user?
           unless opts.include?(:user_filter) && !opts[:user_filter]
             query = user_query(query, opts.merge(model_class: klass))
           end
@@ -232,7 +241,7 @@ module ModelApi
         klass = opts[:model_class] || model_class
         query = api_query(opts)
         unless (opts.include?(:user_filter) && !opts[:user_filter]) ||
-            (admin_access? && (admin_content? || filtered_by_foreign_key?(query)))
+            (admin? || filtered_by_foreign_key?(query))
           query = user_query(query, opts.merge(model_class: klass))
         end
         query
@@ -244,7 +253,7 @@ module ModelApi
 
       def user_query(query, opts = {})
         user = opts[:user] || filter_by_user
-        klass = opts[:model_class] || model_class
+        klass = opts[:model_class] || query.klass
         user_id_col = opts[:user_id_column] || :user_id
         user_assoc = opts[:user_association] || :user
         user_id = user.try(opts[:user_id_attribute] || :id)
@@ -266,12 +275,11 @@ module ModelApi
       end
 
       def base_admin_api_options
-        base_api_options.merge(admin_only: true)
+        base_api_options.merge(admin: true, admin_only: true)
       end
 
       def ensure_admin
-        user = current_user
-        return true if user.respond_to?(:admin_api_user?) && user.admin_api_user?
+        return true if admin_user?
 
         # Mask presence of endpoint if user is not authorized to access it
         not_found
@@ -310,14 +318,29 @@ module ModelApi
       end
 
       # Indicates whether user has access to data they do not own.
-      def admin_access?
-        false
+      def admin_user?(opts = {})
+        return opts[:admin_user] if opts.include?(:admin_user)
+        user = current_user
+        return nil if user.nil?
+        [:admin_api_user?, :admin_user?, :admin?].each do |method|
+          next unless user.respond_to?(method)
+          opts[:admin_user] = user.send(method) rescue next
+          break
+        end
+        opts[:admin_user] ||= false
       end
 
       # Indicates whether API should render administrator-only content in API responses
-      def admin_content?
+      def admin?(opts = {})
+        return opts[:admin] if opts.include?(:admin)
         param = request.params[:admin]
-        param.present? && param.to_i != 0 && admin_access?
+        param.present? && admin_user?(opts) &&
+            (param.to_i != 0 && params.to_s.strip.downcase != 'false')
+      end
+
+      # Deprecated
+      def admin_content?(opts = {})
+        admin?(opts)
       end
 
       def resource_parent_id(parent_model_class, opts = {})
@@ -399,6 +422,7 @@ module ModelApi
       end
 
       def validate_read_operation(obj, operation, opts = {})
+        opts = prepare_options(opts)
         status, errors = ModelApi::Utils.validate_operation(obj, operation,
             opts.merge(model_metadata: opts[:api_model_metadata] || opts[:model_metadata]))
         return true if status.nil? && errors.nil?
@@ -453,7 +477,7 @@ module ModelApi
       end
 
       def get_updated_object(obj_or_class, operation, opts = {})
-        opts = opts.symbolize_keys
+        opts = prepare_options(opts.symbolize_keys)
         opts[:operation] = operation
         req_body, format = ModelApi::Utils.parse_request_body(request)
         if obj_or_class.is_a?(Class)
@@ -476,7 +500,6 @@ module ModelApi
         root_elem = opts[:root] = ModelApi::Utils.model_name(klass).singular
         request_obj = opts[:request_obj] = Utils.object_from_req_body(root_elem, req_body, format)
         ModelApi::Utils.apply_updates(obj, request_obj, operation, opts)
-        opts.freeze
         ModelApi::Utils.invoke_callback(model_metadata[:after_initialize], obj, opts)
         [obj, opts]
       end

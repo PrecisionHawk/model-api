@@ -128,7 +128,7 @@ module ModelApi
         end
         value = value.symbolize_keys if value.is_a?(Hash)
         return value unless transform_method_or_proc.respond_to?(:call)
-        invoke_callback(transform_method_or_proc, value, opts.freeze)
+        invoke_callback(transform_method_or_proc, value, opts)
       end
 
       def http_status_code(status)
@@ -241,6 +241,11 @@ module ModelApi
 
       def invoke_callback(callback, *params)
         return nil unless callback.respond_to?(:call)
+        callback_param_count = callback.parameters.size
+        if params.size >= callback_param_count + 1 && (last_param = params.last).is_a?(Hash)
+          # Automatically pass duplicate of final hash param (to prevent data corruption)
+          params = params[0..-2] + [last_param.dup]
+        end
         callback.send(*(([:call] + params)[0..callback.parameters.size]))
       end
 
@@ -391,7 +396,6 @@ module ModelApi
         klass = find_class(obj, opts)
         model_metadata = opts[:model_metadata] || model_metadata(klass)
         return nil unless operation.present?
-        opts = opts.frozen? ? opts : opts.dup.freeze
         if obj.nil?
           invoke_callback(model_metadata[:"validate_#{operation}"], opts)
         else
@@ -430,7 +434,7 @@ module ModelApi
           test_value = test_value[filter_value]
         end
         if test_value.respond_to?(:call)
-          return invoke_callback(test_value, klass, opts.merge(filter_type => filter_value).freeze)
+          return invoke_callback(test_value, klass, opts.merge(filter_type => filter_value))
         end
         filter_value == test_value
       end
@@ -453,7 +457,7 @@ module ModelApi
 
       def include_item?(metadata, obj, operation, opts = {})
         return false unless metadata.is_a?(Hash)
-        return false unless include_item_meets_admin_criteria?(metadata, obj, opts)
+        return false unless include_item_meets_admin_criteria?(metadata, obj, operation, opts)
         # Stop here re: filter/sort params, as following checks involve payloads/responses only
         return eval_bool(obj, metadata[:filter], opts) if operation == :filter
         return eval_bool(obj, metadata[:sort], opts) if operation == :sort
@@ -500,13 +504,11 @@ module ModelApi
         end]
       end
 
-      def include_item_meets_admin_criteria?(metadata, obj, opts = {})
+      def include_item_meets_admin_criteria?(metadata, obj, operation, opts = {})
         if eval_bool(obj, metadata[:admin_only], opts)
-          if opts.include?(:admin)
-            return false unless opts[:admin]
-          else
-            return false unless opts[:user].try(:admin_api_user?)
-          end
+          return true if opts[:admin]
+          return false unless [:create, :update, :patch].include?(operation)
+          return opts[:admin_user] ? true : false
         end
         return false if eval_bool(obj, metadata[:admin_content], opts) && !opts[:admin_content]
         true
@@ -575,7 +577,7 @@ module ModelApi
         end
         apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
         invoke_callback(model_metadata[:after_initialize], assoc_obj,
-            assoc_opts.merge(operation: assoc_oper).freeze)
+            assoc_opts.merge(operation: assoc_oper))
         assoc_obj
       end
 
@@ -611,7 +613,7 @@ module ModelApi
             assoc_class, assoc_payload, parent_obj, opts)
         apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
         invoke_callback(model_metadata[:after_initialize], assoc_obj,
-            opts.merge(operation: assoc_oper).freeze)
+            opts.merge(operation: assoc_oper))
         if assoc_opts[:ignored_fields].present?
           external_attr = ext_attr(attr, attr_metadata)
           opts[:ignored_fields] << { external_attr.to_s => assoc_opts[:ignored_fields] }
@@ -662,7 +664,6 @@ module ModelApi
         on_exception = attr_metadata[:on_exception]
         fail e unless on_exception.present?
         on_exception = { Exception => on_exception } unless on_exception.is_a?(Hash)
-        opts = opts.frozen? ? opts : opts.dup.freeze
         on_exception.each do |klass, handler|
           klass = klass.to_s.constantize rescue nil unless klass.is_a?(Class)
           next unless klass.is_a?(Class) && e.is_a?(klass)
@@ -759,22 +760,22 @@ module ModelApi
 
       def before_validate_callbacks(model_metadata, obj, opts)
 
-        invoke_callback(model_metadata[:before_validate], obj, opts.dup)
-        invoke_callback(opts[:before_validate], obj, opts.dup)
+        invoke_callback(model_metadata[:before_validate], obj, opts)
+        invoke_callback(opts[:before_validate], obj, opts)
       end
 
       def before_save_callbacks(model_metadata, obj, new_obj, opts)
-        invoke_callback(model_metadata[:before_create], obj, opts.dup) if new_obj
-        invoke_callback(opts[:before_create], obj, opts.dup) if new_obj
-        invoke_callback(model_metadata[:before_save], obj, opts.dup)
-        invoke_callback(opts[:before_save], obj, opts.dup)
+        invoke_callback(model_metadata[:before_create], obj, opts) if new_obj
+        invoke_callback(opts[:before_create], obj, opts) if new_obj
+        invoke_callback(model_metadata[:before_save], obj, opts)
+        invoke_callback(opts[:before_save], obj, opts)
       end
 
       def after_save_callbacks(model_metadata, obj, new_obj, opts)
-        invoke_callback(model_metadata[:after_create], obj, opts.dup) if new_obj
-        invoke_callback(opts[:after_create], obj, opts.dup) if new_obj
-        invoke_callback(model_metadata[:after_save], obj, opts.dup)
-        invoke_callback(opts[:after_save], obj, opts.dup)
+        invoke_callback(model_metadata[:after_create], obj, opts) if new_obj
+        invoke_callback(opts[:after_create], obj, opts) if new_obj
+        invoke_callback(model_metadata[:after_save], obj, opts)
+        invoke_callback(opts[:after_save], obj, opts)
       end
 
       def validate_preserving_existing_errors(obj)
