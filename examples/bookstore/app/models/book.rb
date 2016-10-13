@@ -1,10 +1,10 @@
 class Book < ActiveRecord::Base
   include ModelApi::Model
-  
+
   validates :name, presence: true, uniqueness: true, length: { maximum: 50 }
   validates :description, length: { maximum: 250 }
   validates :isbn, presence: true, uniqueness: true, length: { maximum: 13 }
-  
+
   api_attributes \
       id: { filter: true, sort: true },
       name: { filter: true, sort: true },

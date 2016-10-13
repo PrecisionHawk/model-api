@@ -372,7 +372,7 @@ module ModelApi
         end
         object_errors
       end
-      
+
       def save_obj(obj, opts = {})
         operation = opts[:operation] || (obj.new_record? ? :create : :update)
         model_metadata = opts.delete(:model_metadata) || model_metadata(obj.class)
@@ -758,7 +758,7 @@ module ModelApi
       # rubocop:enable Metrics/MethodLength
 
       def before_validate_callbacks(model_metadata, obj, opts)
-        
+
         invoke_callback(model_metadata[:before_validate], obj, opts.dup)
         invoke_callback(opts[:before_validate], obj, opts.dup)
       end

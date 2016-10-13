@@ -25,11 +25,11 @@ module ModelApi
       end
       @model_api_global_metadata = global_metadata
     end
-    
+
     def global_metadata
       @model_api_global_metadata || default_global_metadata
     end
-    
+
     def default_global_metadata
       {
       }
