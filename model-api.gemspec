@@ -17,7 +17,7 @@ Gem::Specification.new do |s|
   s.require_path = "lib"
 
   s.add_dependency "rails", "~> 4.0"
-  s.add_dependency "open-api", "~> 0.8.2"
+  s.add_dependency "open-api", "~> 0.8.3"
 
   s.add_development_dependency "rspec-rails", "~> 3.5", ">= 3.5.2"
 end
