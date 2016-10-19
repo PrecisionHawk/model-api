@@ -52,8 +52,8 @@ module ModelApi
               status: { type: :string, required: true, description: 'HTTP status' },
               statusCode: { type: :integer, required: true,
                   description: 'Numeric HTTP status code' },
-              ModelApi::Utils.ext_attr(opts[:root] || ModelApi::Utils.model_name(model_class).singular) =>
-                  response_object_metadata)
+              ModelApi::Utils.ext_attr(opts[:root] ||
+                  ModelApi::Utils.model_name(model_class).singular) => response_object_metadata)
           wrapper_object_name
         end
 
