@@ -408,8 +408,9 @@ module ModelApi
         metadata = filtered_ext_attrs(klass, opts[:operation] || :index, opts)
         model_metadata = opts[:model_metadata] || model_metadata(klass)
         includes = []
-        if (metadata_includes = model_metadata[:collection_includes]).is_a?(Array)
-          includes += metadata_includes.map(&:to_sym)
+        if (metadata_includes = model_metadata[:collection_includes]).present?
+          meta_includes = [meta_includes] unless meta_includes.is_a?(Array)
+          includes += metadata_includes
         end
         metadata.each do |_attr, attr_metadata|
           includes << attr_metadata[:key] if attr_metadata[:type] == :association
