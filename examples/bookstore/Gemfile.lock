@@ -1,8 +1,8 @@
 PATH
   remote: ../..
   specs:
-    model-api (0.8.6)
-      open-api (~> 0.8.2)
+    model-api (0.8.7)
+      open-api (~> 0.8.4)
       rails (~> 4.0)
 
 GEM
@@ -62,7 +62,7 @@ GEM
     minitest (5.9.1)
     multi_json (1.12.1)
     mysql2 (0.3.21)
-    open-api (0.8.2)
+    open-api (0.8.4)
       rails (>= 4.0)
     puma (3.6.0)
     rack (1.5.5)
