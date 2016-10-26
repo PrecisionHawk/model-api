@@ -3,7 +3,7 @@ $:.unshift lib unless $:.include?(lib)
 
 Gem::Specification.new do |s|
   s.name = 'model-api'
-  s.version = '0.8.8'
+  s.version = '0.8.9'
   s.summary = 'Create easy REST API\'s using metadata inside your ActiveRecord models'
   s.description = 'Ruby gem allowing Ruby on Rails developers to create REST API’s using ' \
       'metadata defined inside their ActiveRecord models.'
