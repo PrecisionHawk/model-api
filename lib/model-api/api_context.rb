@@ -424,15 +424,6 @@ module ModelApi
       request_obj
     end
 
-    def add_pagination_links(collection_links, coll_route, page, last_page)
-      if page < last_page
-        collection_links[:next] = [coll_route, { page: (page + 1) }]
-      end
-      collection_links[:prev] = [coll_route, { page: (page - 1) }] if page > 1
-      collection_links[:first] = [coll_route, { page: 1 }]
-      collection_links[:last] = [coll_route, { page: last_page }]
-    end
-
     def verify_update_request_body(request_body, format, opts = {})
       if request_body.is_a?(Array)
         fail 'Expected object, but collection provided'

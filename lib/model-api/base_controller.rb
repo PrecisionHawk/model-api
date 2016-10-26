@@ -527,6 +527,15 @@ module ModelApi
         [collection, collection_links, opts]
       end
 
+      def add_pagination_links(collection_links, coll_route, page, last_page)
+        if page < last_page
+          collection_links[:next] = [coll_route, { page: (page + 1) }]
+        end
+        collection_links[:prev] = [coll_route, { page: (page - 1) }] if page > 1
+        collection_links[:first] = [coll_route, { page: 1 }]
+        collection_links[:last] = [coll_route, { page: last_page }]
+      end
+
       def add_collection_object_route(opts)
         object_route = opts[:object_route]
         unless object_route.present?
