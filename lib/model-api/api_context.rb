@@ -126,7 +126,7 @@ module ModelApi
       result_filters = {}
       metadata.values.each do |attr_metadata|
         collection = apply_filter_param(attr_metadata, collection,
-            opts.merge(attr_values: attr_values, result_filters: result_filters, class: klass))
+            opts.merge(attr_values: attr_values, result_filters: result_filters, class_name: klass))
       end
       assoc_values.each do |assoc, assoc_filter_params|
         ar_assoc = klass.reflect_on_association(assoc)

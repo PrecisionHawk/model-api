@@ -1,6 +1,12 @@
 class Book < ActiveRecord::Base
   include ModelApi::Model
 
+  has_many :book_genres, dependent: :destroy
+  has_many :genres, through: :book_genres, inverse_of: :books
+  has_many :author_books, dependent: :destroy
+  has_many :authors, through: :author_books, inverse_of: :books
+  belongs_to :primary_genre, class_name: 'Genre', inverse_of: :primary_books
+
   validates :name, presence: true, uniqueness: true, length: { maximum: 50 }
   validates :description, length: { maximum: 250 }
   validates :isbn, presence: true, uniqueness: true, length: { maximum: 13 }
