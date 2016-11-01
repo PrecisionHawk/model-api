@@ -277,9 +277,8 @@ module ModelApi
         klass = parent_obj.class
         assoc = klass.reflect_on_association(assoc) if assoc.is_a?(Symbol) || assoc.is_a?(String)
         fail "Unrecognized association '#{assoc}' on class '#{klass.name}'" if assoc.nil?
-        assoc_class = assoc.class_name.constantize
-        model_metadata = model_metadata(assoc_class)
-        do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload, parent_obj, opts)
+        model_metadata = model_metadata(assoc.class_name.constantize)
+        do_resolve_assoc_obj(model_metadata, assoc, assoc_payload, parent_obj, nil, opts)
       end
 
       def update_api_attr(obj, attr, value, opts = {})
@@ -310,16 +309,20 @@ module ModelApi
         end
       end
 
-      def find_by_id_attrs(id_attributes, assoc_class, assoc_payload)
-        return nil unless id_attributes.present?
+      def query_by_id_attrs(id_attributes, assoc, assoc_payload, opts = {})
+        return nil unless id_attributes.present? && opts[:api_context].present?
+        assoc_class = assoc.class_name.constantize
+        attr_metadata = filtered_attrs(assoc_class, opts[:operation] || :update, opts)
         id_attributes.each do |id_attr_set|
           query = nil
           id_attr_set.each do |id_attr|
-            unless assoc_payload.include?(id_attr.to_s)
+            ext_attr = attr_metadata[id_attr].try(:[], :alias) || id_attr
+            unless ext_attr.present? && assoc_payload.include?(ext_attr.to_s)
               query = nil
               break
             end
-            query = (query || assoc_class).where(id_attr => assoc_payload[id_attr.to_s])
+            query = (query || opts[:api_context].api_query(assoc_class, opts))
+                .where(id_attr => assoc_payload[ext_attr.to_s])
           end
           return query unless query.nil?
         end
@@ -544,8 +547,7 @@ module ModelApi
       def update_one_to_many_assoc(obj, attr, value, opts = {})
         attr_metadata = opts[:attr_metadata]
         assoc = attr_metadata[:association]
-        assoc_class = assoc.class_name.constantize
-        model_metadata = model_metadata(assoc_class)
+        model_metadata = model_metadata(assoc.class_name.constantize)
         value_array = value.to_a rescue nil
         unless value_array.is_a?(Array)
           obj.errors.add(attr, 'must be supplied as an array of objects')
@@ -556,25 +558,37 @@ module ModelApi
         assoc_objs = []
         value_array.each_with_index do |assoc_payload, index|
           opts[:ignored_fields].clear if opts.include?(:ignored_fields)
-          assoc_objs << update_one_to_many_assoc_obj(obj, assoc, assoc_class, assoc_payload,
+          assoc_obj = update_one_to_many_assoc_obj(obj, assoc, assoc_payload,
               opts.merge(model_metadata: model_metadata))
+          next if assoc_obj.nil?
+          assoc_objs << assoc_obj
           if opts[:ignored_fields].present?
             external_attr = ext_attr(attr, attr_metadata)
             opts[:ignored_fields] << { "#{external_attr}[#{index}]" => opts[:ignored_fields] }
           end
         end
-        set_api_attr(obj, attr, assoc_objs, opts)
+        assoc_objs = assoc_objs.each do |assoc_obj|
+          if assoc_obj.new_record? || assoc_obj != existing_assoc_obj
+            set_api_attr(obj, attr, assoc_obj.attributes, opts.merge(setter: ->(v, _opts) {
+              obj.send(assoc.name).build(v)
+            }))
+          else
+            assoc_obj.save
+            assoc_obj
+          end
+        end
       end
 
-      def update_one_to_many_assoc_obj(parent_obj, assoc, assoc_class, assoc_payload, opts = {})
-        model_metadata = opts[:model_metadata] || model_metadata(assoc_class)
+      def update_one_to_many_assoc_obj(parent_obj, assoc, assoc_payload, opts = {})
+        model_metadata = opts[:model_metadata] || model_metadata(assoc.class_name.constantize)
         assoc_obj, assoc_oper, assoc_opts = resolve_one_to_many_assoc_obj(model_metadata, assoc,
-            assoc_class, assoc_payload, parent_obj, opts)
+            assoc_payload, parent_obj, opts)
+        return nil if assoc_obj.nil?
         if (inverse_assoc = assoc.options[:inverse_of]).present? &&
             assoc_obj.respond_to?("#{inverse_assoc}=")
           assoc_obj.send("#{inverse_assoc}=", parent_obj)
         elsif !parent_obj.new_record? && assoc_obj.respond_to?("#{assoc.foreign_key}=")
-          assoc_obj.send("#{assoc.foreign_key}=", obj.id)
+          assoc_obj.send("#{assoc.foreign_key}=", parent_obj.id)
         end
         apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
         invoke_callback(model_metadata[:after_initialize], assoc_obj,
@@ -582,19 +596,20 @@ module ModelApi
         assoc_obj
       end
 
-      def resolve_one_to_many_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+      def resolve_one_to_many_assoc_obj(model_metadata, assoc, assoc_payload,
           parent_obj, opts = {})
-        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
-            parent_obj, opts.merge(auto_create: true))
+        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_payload, parent_obj, nil,
+            opts.merge(auto_create: true))
+        return [nil, nil, nil] if assoc_obj.nil?
         if assoc_obj.new_record?
           assoc_oper = :create
           opts[:create_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
-              assoc_class, :create, opts))
+              assoc.class_name.constantize, :create, opts))
           assoc_opts = opts[:create_opts]
         else
           assoc_oper = :update
           opts[:update_opts] ||= opts.merge(api_attr_metadata: filtered_attrs(
-              assoc_class, :update, opts))
+              assoc.class_name.constantize, :update, opts))
 
           assoc_opts = opts[:update_opts]
         end
@@ -608,10 +623,11 @@ module ModelApi
         end
         attr_metadata = opts[:attr_metadata]
         assoc = attr_metadata[:association]
-        assoc_class = assoc.class_name.constantize
-        model_metadata = model_metadata(assoc_class)
+        model_metadata = model_metadata(assoc.class_name.constantize)
+        existing_assoc_obj = parent_obj.send(assoc.name) rescue nil
         assoc_obj, assoc_oper, assoc_opts = resolve_one_to_one_assoc_obj(model_metadata, assoc,
-            assoc_class, assoc_payload, parent_obj, opts)
+            assoc_payload, parent_obj, existing_assoc_obj, opts)
+        return if assoc_obj.nil?
         apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
         invoke_callback(model_metadata[:after_initialize], assoc_obj,
             opts.merge(operation: assoc_oper))
@@ -619,29 +635,36 @@ module ModelApi
           external_attr = ext_attr(attr, attr_metadata)
           opts[:ignored_fields] << { external_attr.to_s => assoc_opts[:ignored_fields] }
         end
-        set_api_attr(parent_obj, attr, assoc_obj, opts)
+        if assoc_obj.new_record? || assoc_obj != existing_assoc_obj
+          set_api_attr(parent_obj, attr, assoc_obj.attributes,
+              opts.merge(setter: "build_#{attr_metadata[:key] || attr}"))
+        else
+          assoc_obj.save
+        end
       end
 
-      def resolve_one_to_one_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
-          parent_obj, opts = {})
+      def resolve_one_to_one_assoc_obj(model_metadata, assoc, assoc_payload, parent_obj,
+          existing_assoc_obj, opts = {})
         assoc_opts = opts[:ignored_fields].is_a?(Array) ? opts.merge(ignored_fields: []) : opts
-        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
-            parent_obj, opts.merge(auto_create: true))
+        assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_payload, parent_obj,
+            existing_assoc_obj, opts.merge(auto_create: true))
+        return [nil, nil, nil] if assoc_obj.nil?
         assoc_oper = assoc_obj.new_record? ? :create : :update
         assoc_opts = assoc_opts.merge(
-            api_attr_metadata: filtered_attrs(assoc_class, assoc_oper, opts))
+            api_attr_metadata: filtered_attrs(assoc.class_name.constantize, assoc_oper, opts))
         return [assoc_obj, assoc_oper, assoc_opts]
       end
 
-      def do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload, parent_obj,
+      def do_resolve_assoc_obj(model_metadata, assoc, assoc_payload, parent_obj, existing_assoc_obj,
           opts = {})
+        return nil unless assoc_payload.present?
         if opts[:resolve].try(:respond_to?, :call)
           assoc_obj = invoke_callback(opts[:resolve], assoc_payload, opts.merge(
               parent: parent_obj, association: assoc, association_metadata: model_metadata))
-        else
-          assoc_obj = find_by_id_attrs(model_metadata[:id_attributes], assoc_class, assoc_payload)
-          assoc_obj = assoc_obj.first unless assoc_obj.nil? || assoc_obj.count != 1
-          assoc_obj ||= assoc_class.new if opts[:auto_create]
+        elsif (assoc_obj = existing_assoc_obj).blank?
+          assoc_obj = query_by_id_attrs(model_metadata[:id_attributes], assoc, assoc_payload, opts)
+          assoc_obj = (assoc_obj.count != 1 ? nil : assoc_obj.first) unless assoc_obj.nil?
+          assoc_obj ||= assoc.class_name.constantize.new if opts[:auto_create]
         end
         assoc_obj
       end
@@ -650,14 +673,17 @@ module ModelApi
         attr = attr.to_sym
         attr_metadata = get_attr_metadata(obj, attr, opts)
         internal_field = attr_metadata[:key] || attr
-        setter = attr_metadata[:setter] || "#{(internal_field)}="
-        unless obj.respond_to?(setter)
+        setter = opts[:setter] || attr_metadata[:setter] || "#{(internal_field)}="
+        if setter.respond_to?(:call)
+          ModelApi::Utils.invoke_callback(setter, value, opts.merge(parent: obj, attribute: attr))
+        elsif !obj.respond_to?(setter)
           Rails.logger.warn "Error encountered assigning API input for attribute \"#{attr}\" " \
                   '(setter not found): skipping.'
           add_ignored_field(opts[:ignored_fields], attr, value, attr_metadata)
           return
+        else
+          obj.send(setter, value)
         end
-        obj.send(setter, value)
       end
 
       def handle_api_setter_exception(e, obj, attr_metadata, opts = {})
@@ -721,7 +747,6 @@ module ModelApi
         attr_metadata = opts[:attr_metadata] || {}
         processed_assoc_objects = {}
         assoc = attr_metadata[:association]
-        assoc_class = assoc.class_name.constantize
         external_attr = ext_attr(attr, attr_metadata)
         attr_metadata_create = attr_metadata_update = nil
         if assoc.macro == :has_many
@@ -730,11 +755,11 @@ module ModelApi
             processed_assoc_objects[assoc_obj] = true
             attr_prefix = "#{external_attr}[#{index}]."
             if assoc_obj.new_record?
-              attr_metadata_create ||= filtered_attrs(assoc_class, :create, opts)
+              attr_metadata_create ||= filtered_attrs(assoc.class_name.constantize, :create, opts)
               object_errors += extract_error_msgs(assoc_obj, opts.merge(
                   attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_create))
             else
-              attr_metadata_update ||= filtered_attrs(assoc_class, :update, opts)
+              attr_metadata_update ||= filtered_attrs(assoc.class_name.constantize, :update, opts)
               object_errors += extract_error_msgs(assoc_obj, opts.merge(
                   attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_update))
             end
@@ -745,11 +770,11 @@ module ModelApi
           processed_assoc_objects[assoc_obj] = true
           attr_prefix = "#{external_attr}->"
           if assoc_obj.new_record?
-            attr_metadata_create ||= filtered_attrs(assoc_class, :create, opts)
+            attr_metadata_create ||= filtered_attrs(assoc.class_name.constantize, :create, opts)
             object_errors += extract_error_msgs(assoc_obj, opts.merge(
                 attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_create))
           else
-            attr_metadata_update ||= filtered_attrs(assoc_class, :update, opts)
+            attr_metadata_update ||= filtered_attrs(assoc.class_name.constantize, :update, opts)
             object_errors += extract_error_msgs(assoc_obj, opts.merge(
                 attr_prefix: attr_prefix, api_attr_metadata: attr_metadata_update))
           end
