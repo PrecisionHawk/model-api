@@ -296,9 +296,9 @@ module ModelApi
             attr_metadata = opts[:attr_metadata]
             assoc = attr_metadata[:association]
             if assoc.macro == :has_many
-              update_has_many_assoc(obj, attr, value, opts)
-            elsif assoc.macro == :belongs_to
-              update_belongs_to_assoc(obj, attr, value, opts)
+              update_one_to_many_assoc(obj, attr, value, opts)
+            elsif [:belongs_to, :has_one].include?(assoc.macro)
+              update_one_to_one_assoc(obj, attr, value, opts)
             else
               add_ignored_field(opts[:ignored_fields], attr, value, attr_metadata)
             end
@@ -541,7 +541,7 @@ module ModelApi
         true
       end
 
-      def update_has_many_assoc(obj, attr, value, opts = {})
+      def update_one_to_many_assoc(obj, attr, value, opts = {})
         attr_metadata = opts[:attr_metadata]
         assoc = attr_metadata[:association]
         assoc_class = assoc.class_name.constantize
@@ -556,7 +556,7 @@ module ModelApi
         assoc_objs = []
         value_array.each_with_index do |assoc_payload, index|
           opts[:ignored_fields].clear if opts.include?(:ignored_fields)
-          assoc_objs << update_has_many_assoc_obj(obj, assoc, assoc_class, assoc_payload,
+          assoc_objs << update_one_to_many_assoc_obj(obj, assoc, assoc_class, assoc_payload,
               opts.merge(model_metadata: model_metadata))
           if opts[:ignored_fields].present?
             external_attr = ext_attr(attr, attr_metadata)
@@ -566,9 +566,9 @@ module ModelApi
         set_api_attr(obj, attr, assoc_objs, opts)
       end
 
-      def update_has_many_assoc_obj(parent_obj, assoc, assoc_class, assoc_payload, opts = {})
+      def update_one_to_many_assoc_obj(parent_obj, assoc, assoc_class, assoc_payload, opts = {})
         model_metadata = opts[:model_metadata] || model_metadata(assoc_class)
-        assoc_obj, assoc_oper, assoc_opts = resolve_has_many_assoc_obj(model_metadata, assoc,
+        assoc_obj, assoc_oper, assoc_opts = resolve_one_to_many_assoc_obj(model_metadata, assoc,
             assoc_class, assoc_payload, parent_obj, opts)
         if (inverse_assoc = assoc.options[:inverse_of]).present? &&
             assoc_obj.respond_to?("#{inverse_assoc}=")
@@ -582,7 +582,7 @@ module ModelApi
         assoc_obj
       end
 
-      def resolve_has_many_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+      def resolve_one_to_many_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
           parent_obj, opts = {})
         assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
             parent_obj, opts.merge(auto_create: true))
@@ -601,7 +601,7 @@ module ModelApi
         [assoc_obj, assoc_oper, assoc_opts]
       end
 
-      def update_belongs_to_assoc(parent_obj, attr, assoc_payload, opts = {})
+      def update_one_to_one_assoc(parent_obj, attr, assoc_payload, opts = {})
         unless assoc_payload.is_a?(Hash)
           parent_obj.errors.add(attr, 'must be supplied as an object')
           return
@@ -610,7 +610,7 @@ module ModelApi
         assoc = attr_metadata[:association]
         assoc_class = assoc.class_name.constantize
         model_metadata = model_metadata(assoc_class)
-        assoc_obj, assoc_oper, assoc_opts = resolve_belongs_to_assoc_obj(model_metadata, assoc,
+        assoc_obj, assoc_oper, assoc_opts = resolve_one_to_one_assoc_obj(model_metadata, assoc,
             assoc_class, assoc_payload, parent_obj, opts)
         apply_updates(assoc_obj, assoc_payload, assoc_oper, assoc_opts)
         invoke_callback(model_metadata[:after_initialize], assoc_obj,
@@ -622,7 +622,7 @@ module ModelApi
         set_api_attr(parent_obj, attr, assoc_obj, opts)
       end
 
-      def resolve_belongs_to_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
+      def resolve_one_to_one_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
           parent_obj, opts = {})
         assoc_opts = opts[:ignored_fields].is_a?(Array) ? opts.merge(ignored_fields: []) : opts
         assoc_obj = do_resolve_assoc_obj(model_metadata, assoc, assoc_class, assoc_payload,
