@@ -203,4 +203,11 @@ Book.create([
     }
 ])
 
+puts "Seeding users ..."
+User.create([
+    { email: 'john.doe@precisionhawk.com', first_name: 'John', last_name: 'Doe' },
+    { email: 'jane.smith@precisionhawk.com', first_name: 'Jane', last_name: 'Smith' },
+    { email: 'janet.admin@precisionhawk.com', first_name: 'Janet', last_name: 'Admin', admin: true }
+])
+
 puts "Seeding complete!"

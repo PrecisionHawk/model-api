@@ -138,6 +138,7 @@ ActiveRecord::Schema.define(version: 20161031155516) do
     t.string "email", limit: 100, null: false
     t.string "first_name", limit: 50, null: false
     t.string "last_name", limit: 50, null: false
+    t.boolean "admin", default: false, null: false
     t.datetime "last_login_at"
     t.datetime "created_at"
     t.datetime "updated_at"

@@ -18,7 +18,7 @@ module Api
           headers: {
               'Authorization' => {
                   type: :string,
-                  description: 'Authorization header (format: "bearer &lt;access token&gt;")',
+                  description: 'Authorization header (format: "Bearer &lt;current user id&gt;")',
                   required: false
               }
           },
@@ -35,6 +35,25 @@ module Api
       # HATEOAS links common to all responses (e.g. a common terms-of-service link)
       def common_response_links(_opts = {})
         { 'terms-of-service' => URI(url_for(controller: '/home', action: :terms_of_service)) }
+      end
+
+      def current_user
+        return @current_user if instance_variable_defined?(:@current_user)
+        if request.authorization.try(:starts_with?, 'Bearer ')
+          @current_user = User.where(id: request.authorization[7..-1].to_i).first
+        else
+          @current_user = nil
+        end
+      end
+
+      def admin_user?(_opts = {})
+        return @admin_user if instance_variable_defined?(:@admin_user)
+        @admin_user = @current_user.try(:admin?)
+      end
+
+      def admin_content?(_opts = {})
+        return @admin_content if instance_variable_defined?(:@admin_content)
+        @admin_content = params.include?(:admin) && params[:admin].to_i != 0
       end
     end
   end

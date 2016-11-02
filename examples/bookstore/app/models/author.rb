@@ -17,7 +17,7 @@ class Author < ActiveRecord::Base
       display_name: { filter: true, sort: true },
       first_name: { filter: true, sort: true },
       last_name: { filter: true, sort: true },
-      primary_genre: { filter: true, sort: true },
+      primary_genre: { filter: true, sort: true, attributes: [:id, :name] },
       created_at: { read_only: true, filter: true },
       updated_at: { read_only: true, filter: true }
 

@@ -14,8 +14,8 @@ class Genre < ActiveRecord::Base
   validates :name, presence: true, uniqueness: true, length: { maximum: 50 }
 
   api_attributes \
-      id: { filter: true, sort: true },
-      name: { filter: true, sort: true },
+      id: { filter: true, sort: true, id: true },
+      name: { filter: true, sort: true, id: true },
       created_at: { read_only: true, filter: true },
       updated_at: { read_only: true, filter: true }
 

@@ -11,8 +11,11 @@ class Order < ActiveRecord::Base
   api_attributes \
       id: { filter: true, sort: true },
       user: { filter: true, sort: true },
-      status: { filter: true, sort: true },
+      status: { read_only: true, filter: true, sort: true },
       created_at: { read_only: true, filter: true },
       updated_at: { read_only: true, filter: true }
 
+  def initialize
+    self.status = 'new'
+  end
 end

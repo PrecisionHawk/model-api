@@ -86,6 +86,7 @@ class CreateBookstore < ActiveRecord::Migration
       t.string :email, null: false, limit: 100
       t.string :first_name, null: false, limit: 50
       t.string :last_name, null: false, limit: 50
+      t.boolean :admin, null: false, default: false
       t.datetime :last_login_at
       t.timestamps
     end
