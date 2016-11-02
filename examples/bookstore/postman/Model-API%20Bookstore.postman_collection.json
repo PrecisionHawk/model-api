@@ -1,0 +1,1076 @@
+{
+  "variables": [],
+  "info": {
+    "name": "Model-API Bookstore",
+    "_postman_id": "4c03cf1a-5710-728d-f22e-a02ae36300ad",
+    "description": "",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authors",
+      "description": "",
+      "item": [
+        {
+          "name": "api/v1/authors",
+          "request": {
+            "url": "{{url_base}}/api/v1/authors",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/authors",
+          "request": {
+            "url": "{{url_base}}/api/v1/authors",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Ray Bradbury\",\n  \"firstName\": \"Ray\",\n  \"lastName\": \"Bradbury\",\n  \"primaryGenre\": {\n    \"name\": \"Science Fiction\"\n  }\n}\n"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/authors/:author_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/authors/:author_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "authors",
+                ":author_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{author_id}}",
+                  "id": "author_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/author/:author_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/authors/:author_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "authors",
+                ":author_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{author_id}}",
+                  "id": "author_id"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Raymond\",\n  \"primaryGenre\": {\n    \"name\": \"Fantasy\"\n  }\n}\n"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/authors/:author_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/authors/:author_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "authors",
+                ":author_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{author_id}}",
+                  "id": "author_id"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Raymond Bradbury\",\n  \"firstName\": \"Raymond\",\n  \"lastName\": \"Bradbury\",\n  \"primaryGenre\": {\n    \"name\": \"Fantasy\"\n  }\n}\n"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/authors/:author_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/authors/:author_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "authors",
+                ":author_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{author_id}}",
+                  "id": "author_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "description": "",
+      "item": [
+        {
+          "name": "api/v1/books",
+          "request": {
+            "url": "{{url_base}}/api/v1/books",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/books",
+          "request": {
+            "url": "{{url_base}}/api/v1/books",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Sample book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/books/:book_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/books/:book_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                ":book_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{book_id}}",
+                  "id": "book_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/books/:book_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/books/:book_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                ":book_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{book_id}}",
+                  "id": "book_id"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/books/:book_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/books/:book_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                ":book_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{book_id}}",
+                  "id": "book_id"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Updated book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/books/:book_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/books/:book_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                ":book_id"
+              ],
+              "variable": [
+                {
+                  "value": "{{book_id}}",
+                  "id": "book_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Genres",
+      "description": "",
+      "item": [
+        {
+          "name": "api/v1/genres",
+          "request": {
+            "url": "{{url_base}}/api/v1/genres",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/genres",
+          "request": {
+            "url": "{{url_base}}/api/v1/genres",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Sample book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/genres/:genre_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/genres/:genre_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres",
+                ":genre_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "genre_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/genres/:genre_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/genres/:genre_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres",
+                ":genre_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "genre_id"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/genres/:genre_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/genres/:genre_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres",
+                ":genre_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "genre_id"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Updated book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/genres/:genre_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/genres/:genre_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "genres",
+                ":genre_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "genre_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "",
+      "item": [
+        {
+          "name": "api/v1/orders",
+          "request": {
+            "url": "{{url_base}}/api/v1/orders",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/orders",
+          "request": {
+            "url": "{{url_base}}/api/v1/orders",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Sample book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/orders/:order_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/orders/:order_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "order_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/orders/:order_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/orders/:order_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "order_id"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/orders/:order_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/orders/:order_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "order_id"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Updated book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/orders/:order_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/orders/:order_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":order_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "order_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "",
+      "item": [
+        {
+          "name": "api/v1/users",
+          "request": {
+            "url": "{{url_base}}/api/v1/users",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/users",
+          "request": {
+            "url": "{{url_base}}/api/v1/users",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Sample book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/users/:user_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/users/:user_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "user_id"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/users/:user_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/users/:user_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "user_id"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/users/:user_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/users/:user_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "user_id"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Book\",\n  \"description\": \"Updated book description\",\n  \"isbn\": \"123-4-56-789012-3\"\n}"
+            },
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "api/v1/users/:user_id",
+          "request": {
+            "url": {
+              "raw": "{{url_base}}/api/v1/users/:user_id",
+              "auth": {},
+              "host": [
+                "{{url_base}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":user_id"
+              ],
+              "variable": [
+                {
+                  "value": "",
+                  "id": "user_id"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{current_user_id}}",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "description": ""
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
