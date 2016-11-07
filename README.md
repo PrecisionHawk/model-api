@@ -32,7 +32,7 @@ General information on the API (including enumerated constants, etc.) can be fou
 Put this in your Gemfile:
 
 ``` ruby
-gem 'open-api'
+gem 'model-api'
 ```
 
 ## Configuration
