@@ -1,27 +1,36 @@
 # model-api gem - api_metadata options reference
+Usage information for `api_attributes` method, defining attribute-level metadata for rendering API
+output and interpreting API input.
 
 ## Annotated Example
 ``` ruby
+class MyModelClass < ActiveRecord::Base
+  # ...
+
   api_attributes \
       id: {
         alias: :internal_id, # Appears externally as internalId
         admin_only: true,    # Viewable only in admin mode
         id: true,            # Attribute can be used to uniquely identify the object
-        read_only: true,     # Cannot be updated by the API
+        read_only: true     # Cannot be updated by the API
       },
+
       name: {
         filter: true, # Collections can be filtered by this attribute via query string
-        sort: true    # Collections can be sorted by this attribute via query string
-        id: true,     # This attribute can also be used to uniquely identify the object
+        sort: true,   # Collections can be sorted by this attribute via query string
+        id: true      # This attribute can also be used to uniquely identify the object
       },
+
       price: {
         # Show as a price with two decimal points of precision 
         render: -> (v) { format('$%.2f', v) } 
       },
+
       metadata: {
         # Use the :admin flag passed in opts parameter to determine what kind of metadata to show 
         render: -> (o, opts) { opts[:admin] ? o.admin_metadata : o.public_metadata } 
       },
+
       # Render the creator association as a nested User object
       created_by: {
         # Appears as "creator" in API input / output
@@ -33,6 +42,7 @@
         # Prohibit updates to the nested object
         read_only: true
       },
+
       # Render the owner association as a nested User object
       owned_by: {
         # Appears as "owner" in API input / output
@@ -47,7 +57,8 @@
           first_name: { read_only: true }, # First / last name are read-only, i.e. not usable to
           last_name: { read_only: true }   #   identify associated user on create / update.  
         }
-      }
+      },
+
       options_json: {
         alias: :options,
         # Return value as a Hash, since hashes are rendered by `open-api` as inline JSON. 
@@ -57,6 +68,7 @@
         # Don't show the attribute in API output when the value is nil
         hide_when_nil: true
       },
+
       detailed_options: {
         # Only expose when viewing, creating, or updating individual objects
         only: [:show, :create, :update],
@@ -64,29 +76,38 @@
         render: -> (val) { val.present? ? JSON.parse(val) : nil },
         parse: :to_json,
       },
+
       has_detailed_options: {
         # Only expose when rendering in a collection
         only: [:index],
         # Render true or false depending on whether detailed options are provided
         value: -> (o) { o.detailed_options.present? }
       },
+
       update_options: {
         parse: :to_json,
         write_only: true
       },
+
       sensor_name: {
         # Basic option for handling exceptions
         on_exception: 'is not a valid sensor'
       },
+
       usage_count: {
         # More sophisticated options for handling exceptions
         on_exception: {
-          NotImplementedError: 'has not yet been implemented'
+          NotImplementedError: 'has not yet been implemented',
           RuntimeError: -> (e) { "A runtime error was encountered: #{e.message}" }
         }
       },
+
+      # Object timestamps rendered in a typical fashion
       created_at: { read_only: true, filter: true, sort: true },
       updated_at: { read_only: true, filter: true, sort: true }
+
+  # ...
+end
 ```
 
 ## Rendering
