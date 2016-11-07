@@ -20,9 +20,9 @@ Developing REST API's in a conventional manner involves many challenges.  Betwee
 ## Guides
 This README file is intended to provide a brief introduction.  For more detailed information,
 the following guides are available:
-* [Guide to `api_metadata` options](doc/api_metadata.md)
-* [Guide to `model_metadata` options](doc/api_metadata.md)
-* [Managing data access in `model-api`](doc/api_metadata.md)
+* [Guide to `api_attributes` metadata](doc/api_attributes.md)
+* [Guide to `api_model` metadata](doc/api_model.md)
+* [Managing data access in `model-api`](doc/managing_data_access.md)
 
 General information on the API (including enumerated constants, etc.) can be found here:
 * [General gem usage information](doc/general_info.md)
