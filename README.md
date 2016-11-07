@@ -81,9 +81,14 @@ class Book < ActiveRecord::Base
   validates :name, presence: true, uniqueness: true, length: { maximum: 50 }
   validates :description, length: { maximum: 250 }
   validates :isbn, presence: true, uniqueness: true, length: { maximum: 13 }
-  
+
+  # Define model-level rules and metadata associated with the REST API.
+  api_model(
+      base_query: ->(opts) { opts[:admin] ? Book.where(public: true) : Book.all },
+  )
+
   # Define the attributes exposed via the REST API.
-  api_attributes \
+  api_attributes(
       id: { filter: true, sort: true },
       name: { filter: true, sort: true },
       description: {},
@@ -93,10 +98,14 @@ class Book < ActiveRecord::Base
       },
       created_at: { read_only: true, filter: true },
       updated_at: { read_only: true, filter: true }
+  )
 
 end
 ```
-An explanation of the options used in the `api_attributes` example above:
+An explanation of the options used in the [`api_model`](doc/api_model.md) example above:
+* `base_query` - Limit data exposed by the API based on context (e.g. current user).
+
+An explanation of the options used in the [`api_attributes`](doc/api_attributes.md) example above:
 * `filter` - Allow filtering by query string parameters (e.g. `?id=123`).
 * `sort` - Allow use of this column in the sort_by parameter.
 * `read_only` - Disallow column updates (via `POST`, `PUT`, or `PATCH`).
