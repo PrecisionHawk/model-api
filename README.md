@@ -24,6 +24,9 @@ the following guides are available:
 * [Guide to `model_metadata` options](doc/api_metadata.md)
 * [Managing data access in `model-api`](doc/api_metadata.md)
 
+General information on the API (including enumerated constants, etc.) can be found here:
+* [General information](doc/general_info.md)
+
 ## Installation
  
 Put this in your Gemfile:
