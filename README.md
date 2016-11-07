@@ -84,7 +84,7 @@ class Book < ActiveRecord::Base
 
   # Define model-level rules and metadata associated with the REST API.
   api_model(
-      base_query: ->(opts) { opts[:admin] ? Book.where(public: true) : Book.all },
+      base_query: ->(opts) { opts[:admin] ? Book.where(public: true) : Book.all }
   )
 
   # Define the attributes exposed via the REST API.
