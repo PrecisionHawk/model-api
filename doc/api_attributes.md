@@ -7,7 +7,8 @@ output and interpreting API input.
 class MyModelClass < ActiveRecord::Base
   # ...
 
-  api_attributes \
+  api_attributes(
+
       id: {
         alias: :internal_id, # Appears externally as internalId
         admin_only: true,    # Viewable only in admin mode
@@ -105,6 +106,7 @@ class MyModelClass < ActiveRecord::Base
       # Object timestamps rendered in a typical fashion
       created_at: { read_only: true, filter: true, sort: true },
       updated_at: { read_only: true, filter: true, sort: true }
+  )
 
   # ...
 end
