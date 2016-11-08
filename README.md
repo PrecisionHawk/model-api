@@ -9,13 +9,13 @@ Developing REST API's in a conventional manner involves many challenges.  Betwee
    
  With model-api, you can:
   * Consolidate your payload and response metadata for a given resource in the ActiveRecord model.
+  * Reduce the lines of code required to implement your Rails-based Rest API dramatically.
+  * Generate OpenAPI documentation guaranteed to be in sync with what your API actually supports.
   * Set up easily-configurable filtering, pagination, sorting, and HATEOAS link generation.
   * Render, link, create, search upon, and sort upon your resources' associated objects with ease.
-  * Easily leverage the ActiveRecord validation rules present in your application's models to
-    validate calls to your API.
-  * Automatically generate OpenAPI documentation with each deployment that's guaranteed to be in
-    sync with what your API actually supports.
-  * Reduce the lines of code required to implement your Rails-based Rest API dramatically.
+  * Leverage ActiveRecord validation rules in your application's models to validate API calls.
+  * Effortlessly support JSON and XML input / output formats together in the same API.
+  * Use Java-style camel-case for API content while utilizing Ruby underscore convention internally.
 
 ## Guides
 This README file is intended to provide a brief introduction.  For more detailed information,
@@ -37,7 +37,7 @@ gem 'model-api'
 
 ## Configuration
 
-The `model-api` gem doesn't require configuration.  However, if you plan to generate OpenAPI
+The model-api gem doesn't require configuration.  However, if you plan to generate OpenAPI
  documentation, add an `open_api.rb` file to `config/initializers` and configure as follows:
 
 ``` ruby
