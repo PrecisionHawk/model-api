@@ -188,6 +188,9 @@ module ModelApi
           default_link_options = request.params.to_h.symbolize_keys
           opts[:collection_link_options] ||= default_link_options
           opts[:object_link_options] ||= default_link_options
+          if default_link_options[:exclude_associations].present?
+            opts[:exclude_associations] ||= default_link_options[:exclude_associations]
+          end
         end
         opts[:options_initialized] ||= true
         opts

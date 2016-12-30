@@ -459,6 +459,13 @@ module ModelApi
         metadata
       end
 
+      def exculde_associations_metadata(metadata, obj, opts = {})
+        exclude_associations = opts[:exclude_associations].try(:map, &:to_sym)
+        if exclude_associations.present?
+          return (exclude_associations.include?(obj.table_name) || exclude_associations.include?(metadata[:key]))
+        end
+      end
+
       def include_item?(metadata, obj, operation, opts = {})
         return false unless metadata.is_a?(Hash)
         return false unless include_item_meets_admin_criteria?(metadata, obj, operation, opts)
@@ -467,6 +474,7 @@ module ModelApi
         return eval_bool(obj, metadata[:sort], opts) if operation == :sort
         return false unless include_item_meets_read_write_criteria?(metadata, obj, operation, opts)
         return false unless include_item_meets_incl_excl_criteria?(metadata, obj, operation, opts)
+        return false if exculde_associations_metadata(metadata, obj, opts)
         true
       end
 
