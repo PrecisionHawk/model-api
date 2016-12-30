@@ -25,6 +25,7 @@ argument) will include the following standard options:
 * `:model_class` - If configured, the ActiveRecord model class associated with the API endpoint
 * `:user` - The currently-logged-in user
 * `:user_id` - ID of the currently-logged-in user
+* `:exclude_associations` - Array of association names which are to be excluded from API response
 
 *Note API-specific additional options may be universally included by overriding the
 `prepare_options()` method in the API controller.*
@@ -41,3 +42,16 @@ Below is a summary of API operation categories used when controlling when and ho
 * `:other` - Operation that does not fit into one of the aformeneted CRUD operation categories
 * `:filter` - Used when attribute is being evaluated for filtering purposes
 * `:sort` - Used when attribute is being evaluated for sorted purposes
+
+### Index API options
+Index API - View list of resources.
+
+* `exclude_associations[]` - excludes the association metadata from response.
+
+
+### Show API options
+Show API - View individual resource.
+
+* `exclude_associations[]` - excludes the association metadata from response.
+
+*Note exclude_associations option is of type array.*
