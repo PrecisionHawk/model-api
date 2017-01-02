@@ -419,8 +419,47 @@ module ModelApi
           includes << attr_metadata[:key] if attr_metadata[:type] == :association
         end
         includes = includes.compact.uniq
+        includes = remove_excluded_associations(includes, opts)
         collection = collection.includes(includes) if includes.present?
         collection
+      end
+
+      # New Method: Does not eager load associations mentioned in the exclude_assocations
+      # array defined by user.
+      def remove_excluded_associations(includes, opts)
+        includes_dup = includes.compact.uniq.deep_dup
+        exclude_associations = opts[:exclude_associations]
+        return includes_dup unless exclude_associations.present?
+        exclude_associations.each do |association|
+          process_collection_array(includes_dup, association.to_sym)
+        end
+        includes_dup
+      end
+
+      # If the association is present in array form (in collection_includes) delete it.
+      # Then loop over the array elements to remove the association incase of nested associations.
+      def process_collection_array(array_collection, association)
+        array_collection.delete(association)
+        array_collection.each_with_index do |collection, i|
+          if collection.is_a?(Hash)
+            array_collection[i] = process_collection_hash(collection, association)
+          end
+        end
+        array_collection
+      end
+
+      # Incase of nested associations (in collection_inlcudes) delete the key with the association name
+      # and then loop over to delete associations present as element of a array if any
+      def process_collection_hash(hash_collection, association)
+        if hash_collection.keys.include?(association)
+          hash_collection.delete(association)
+        else
+          hash_collection.each do |key, value|
+            hash_collection[key] =
+              process_collection_array(value, association) if value.is_a?(Array)
+          end
+        end
+        hash_collection
       end
 
       def find_class(obj, opts = {})
@@ -462,7 +501,7 @@ module ModelApi
       def exculde_associations_metadata(metadata, obj, opts = {})
         exclude_associations = opts[:exclude_associations].try(:map, &:to_sym)
         if exclude_associations.present?
-          return (exclude_associations.include?(obj.table_name) || exclude_associations.include?(metadata[:key]))
+          (exclude_associations.include?(obj.table_name) || exclude_associations.include?(metadata[:key]))
         end
       end
 
