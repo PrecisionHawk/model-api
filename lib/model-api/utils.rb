@@ -424,25 +424,25 @@ module ModelApi
         collection
       end
 
-      # New Method: Does not eager load associations mentioned in the exclude_assocations
+      # Does not eager load associations mentioned in the exclude_assocations
       # array defined by user.
       def remove_excluded_associations(includes, opts)
         includes_dup = includes.compact.uniq.deep_dup
         exclude_associations = opts[:exclude_associations]
         return includes_dup unless exclude_associations.present?
         exclude_associations.each do |association|
-          process_collection_array(includes_dup, association.to_sym)
+          remove_association_from_array(includes_dup, association.to_sym)
         end
         includes_dup
       end
 
       # If the association is present in array form (in collection_includes) delete it.
       # Then loop over the array elements to remove the association incase of nested associations.
-      def process_collection_array(array_collection, association)
+      def remove_association_from_array(array_collection, association)
         array_collection.delete(association)
         array_collection.each_with_index do |collection, i|
           if collection.is_a?(Hash)
-            array_collection[i] = process_collection_hash(collection, association)
+            array_collection[i] = remove_association_from_hash(collection, association)
           end
         end
         array_collection
@@ -450,13 +450,13 @@ module ModelApi
 
       # Incase of nested associations (in collection_inlcudes) delete the key with the association name
       # and then loop over to delete associations present as element of a array if any
-      def process_collection_hash(hash_collection, association)
+      def remove_association_from_hash(hash_collection, association)
         if hash_collection.keys.include?(association)
           hash_collection.delete(association)
         else
           hash_collection.each do |key, value|
             hash_collection[key] =
-              process_collection_array(value, association) if value.is_a?(Array)
+              remove_association_from_array(value, association) if value.is_a?(Array)
           end
         end
         hash_collection
@@ -498,7 +498,7 @@ module ModelApi
         metadata
       end
 
-      def exculde_associations_metadata(metadata, obj, opts = {})
+      def exclude_associations_metadata(metadata, obj, opts = {})
         exclude_associations = opts[:exclude_associations].try(:map, &:to_sym)
         if exclude_associations.present?
           (exclude_associations.include?(obj.table_name) || exclude_associations.include?(metadata[:key]))
@@ -513,7 +513,7 @@ module ModelApi
         return eval_bool(obj, metadata[:sort], opts) if operation == :sort
         return false unless include_item_meets_read_write_criteria?(metadata, obj, operation, opts)
         return false unless include_item_meets_incl_excl_criteria?(metadata, obj, operation, opts)
-        return false if exculde_associations_metadata(metadata, obj, opts)
+        return false if exclude_associations_metadata(metadata, obj, opts)
         true
       end
 
