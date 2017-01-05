@@ -424,7 +424,7 @@ module ModelApi
         collection
       end
 
-      # Does not eager load associations mentioned in the exclude_assocations
+      # Does not eager load associations mentioned in the exclude_associations
       # array defined by user.
       def remove_excluded_associations(includes, opts)
         includes_dup = includes.compact.uniq.deep_dup
@@ -449,7 +449,7 @@ module ModelApi
       end
 
       # Incase of nested associations (in collection_inlcudes) delete the key with the association name
-      # and then loop over to delete associations present as element of a array if any
+      # and then loop over the collection to delete associations present as element of the array if any
       def remove_association_from_hash(hash_collection, association)
         if hash_collection.keys.include?(association)
           hash_collection.delete(association)
