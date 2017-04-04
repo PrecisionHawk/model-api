@@ -34,7 +34,7 @@ module ModelApi
         render_values = []
         render_assoc = []
         metadata.each do |attr, attr_metadata|
-          if (value = attr_metadata[:value]).present?
+          if !(value = attr_metadata[:value]).nil?
             render_values << [attr, value, attr_metadata]
           elsif obj.respond_to?(attr.to_s)
             render_values << [attr, obj.send(attr.to_sym), attr_metadata]
