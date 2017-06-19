@@ -448,12 +448,16 @@ module ModelApi
             links = hateoas_links(opts[:links], opts[:link_opts], controller, opts)
           elsif !response_obj.is_a?(Hash) && response_obj.respond_to?(:map)
             response_json = ',' + hateoas_collection(response_obj, controller,
-                opts[:format] || :json, opts)
+                                                     opts[:format] || :json, opts)
             links = hateoas_links(opts[:collection_links],
-                opts[:collection_link_options], controller, opts)
+                                  opts[:collection_link_options], controller, opts)
           else
             root_elem_json = ModelApi::Utils.ext_attr(get_object_root_elem(response_obj, opts)).to_json
-            response_json = ",#{root_elem_json}:" + response_obj.to_json(opts)
+            rj = response_obj.to_json(opts)
+            response_json = ",#{root_elem_json}:" + rj
+            if opts[:oauth_compliant_response] && !root_elem_json.blank?
+              response_json += "," + rj[1..-2]
+            end
             links = hateoas_links(opts[:links], opts[:link_opts], controller, opts)
           end
           if links.present?
