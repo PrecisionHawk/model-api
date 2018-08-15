@@ -22,7 +22,7 @@ module ModelApi
         elsif request.content_type.to_s.downcase.ends_with?('xml')
           api_format = :xml
         end
-        env['action_dispatch.request.content_type'] = 'application/x-api'
+        #env['action_dispatch.request.content_type'] = 'application/x-api'
         env['API_CONTENT_TYPE'] = api_format
         break
       end

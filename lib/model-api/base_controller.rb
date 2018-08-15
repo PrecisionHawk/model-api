@@ -105,7 +105,7 @@ module ModelApi
       def prepare_object_for_create(klass, opts = {})
         opts = api_context.prepare_options(opts)
         req_body, format = parse_request_body
-        opts = add_hateoas_links_for_update(opts)
+        add_hateoas_links_for_update(opts)
         api_context.get_updated_object(klass, get_operation(:create, opts), req_body,
             opts.merge(format: format))
 
@@ -131,7 +131,7 @@ module ModelApi
       def prepare_object_for_update(obj, opts = {})
         opts = api_context.prepare_options(opts)
         req_body, format = parse_request_body
-        opts = add_hateoas_links_for_update(opts)
+        add_hateoas_links_for_update(opts)
         api_context.get_updated_object(obj, get_operation(:update, opts), req_body,
             opts.merge(format: format))
       end
@@ -144,7 +144,7 @@ module ModelApi
       def save_and_render_object(obj, operation, opts = {})
         opts = api_context.prepare_options(opts)
         status, msgs = Utils.process_updated_model_save(obj, operation, opts)
-        add_hateoas_links_for_updated_object(operation, opts)
+        add_hateoas_links_for_updated_object(opts)
         successful = ModelApi::Utils.response_successful?(status)
         ModelApi::Renderer.render(self, successful ? obj : opts[:request_obj],
             opts.merge(status: status, operation: :show, messages: msgs))
@@ -165,7 +165,7 @@ module ModelApi
             opts.merge(model_metadata: opts[:api_model_metadata] || opts[:model_metadata]))
         response_status, errs_or_msgs = Utils.process_object_destroy(obj, operation, opts)
 
-        add_hateoas_links_for_updated_object(operation, opts)
+        add_hateoas_links_for_updated_object(opts)
         klass = ModelApi::Utils.find_class(obj, opts)
         ModelApi::Renderer.render(self, obj, opts.merge(status: response_status,
             root: ModelApi::Utils.model_name(klass).singular, messages: errs_or_msgs))
@@ -558,16 +558,20 @@ module ModelApi
       end
 
       def add_hateoas_links_for_update(opts)
+        binding.pry
+        puts "ADDDDDDDING HATE LINKS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         object_route = opts[:object_route] || self
         links = { self: object_route }.reverse_merge(common_response_links(opts))
         opts[:links] = links.merge(opts[:links] || {})
         opts
       end
 
-      def add_hateoas_links_for_updated_object(_operation, opts)
+      def add_hateoas_links_for_updated_object(opts)
+        binding.pry
         object_route = opts[:object_route] || self
         object_links = { self: object_route }
         opts[:object_links] = object_links.merge(opts[:object_links] || {})
+        opts
       end
 
       def filtered_by_foreign_key?(query)
@@ -576,7 +580,7 @@ module ModelApi
         klass = query.klass
         foreign_keys = (fk_cache[klass] ||= query.klass.reflections.values
             .select { |a| a.macro == :belongs_to }.map { |a| a.foreign_key.to_s })
-        (query.values[:where] || []).select { |v| v.is_a?(Arel::Nodes::Equality) }
+        (query.values[:where] || []).to_h.select { |v| v.is_a?(Arel::Nodes::Equality) }
             .map { |v| v.left.name }.each do |key|
           return true if foreign_keys.include?(key)
         end
