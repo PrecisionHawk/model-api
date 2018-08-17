@@ -22,9 +22,9 @@ module ModelApi
 
         base.send(:include, InstanceMethods)
 
-        base.send(:before_filter, :common_headers)
+        base.send(:before_action, :common_headers)
 
-        base.send(:rescue_from, Exception, with: :unhandled_exception)
+        #base.send(:rescue_from, Exception, with: :unhandled_exception)
         base.send(:respond_to, :json, :xml)
       end
     end
@@ -105,7 +105,6 @@ module ModelApi
       def prepare_object_for_create(klass, opts = {})
         opts = api_context.prepare_options(opts)
         req_body, format = parse_request_body
-        #add_hateoas_links_for_update(opts)
         api_context.get_updated_object(klass, get_operation(:create, opts), req_body,
             opts.merge(format: format))
 
@@ -131,7 +130,6 @@ module ModelApi
       def prepare_object_for_update(obj, opts = {})
         opts = api_context.prepare_options(opts)
         req_body, format = parse_request_body
-        #add_hateoas_links_for_update(opts)
         api_context.get_updated_object(obj, get_operation(:update, opts), req_body,
             opts.merge(format: format))
       end
@@ -144,7 +142,6 @@ module ModelApi
       def save_and_render_object(obj, operation, opts = {})
         opts = api_context.prepare_options(opts)
         status, msgs = Utils.process_updated_model_save(obj, operation, opts)
-        #add_hateoas_links_for_updated_object(opts)
         successful = ModelApi::Utils.response_successful?(status)
         ModelApi::Renderer.render(self, successful ? obj : opts[:request_obj],
             opts.merge(status: status, operation: :show, messages: msgs))
@@ -152,10 +149,9 @@ module ModelApi
 
       def do_destroy(obj, opts = {})
         return unless ensure_admin_if_admin_only(opts)
-        opts = api_context.prepare_options(opts)
+        opts = prepare_options(opts)
         obj = obj.first if obj.is_a?(ActiveRecord::Relation)
 
-        #add_hateoas_links_for_update(opts)
         unless obj.present?
           return not_found(opts.merge(class: klass, field: :id))
         end
@@ -163,12 +159,13 @@ module ModelApi
         operation = opts[:operation] = get_operation(:destroy, opts)
         ModelApi::Utils.validate_operation(obj, operation,
             opts.merge(model_metadata: opts[:api_model_metadata] || opts[:model_metadata]))
-        response_status, errs_or_msgs = Utils.process_object_destroy(obj, operation, opts)
+        response_status, errs_or_msgs =
+          ModelApi::BaseController::Utils.process_object_destroy(obj, operation, opts)
 
-        #add_hateoas_links_for_updated_object(opts)
         klass = ModelApi::Utils.find_class(obj, opts)
+        root = opts[:root] || ModelApi::Utils.model_name(klass).singular
         ModelApi::Renderer.render(self, obj, opts.merge(status: response_status,
-            root: ModelApi::Utils.model_name(klass).singular, messages: errs_or_msgs))
+            root: root.to_s, messages: errs_or_msgs))
       end
 
       def common_response_links(_opts = {})
@@ -555,20 +552,6 @@ module ModelApi
         object_route = opts[:default_object_route] if object_route.blank?
         return if object_route.blank?
         opts[:object_links] = (opts[:object_links] || {}).merge(self: object_route)
-      end
-
-      def add_hateoas_links_for_update(opts)
-        object_route = opts[:object_route] || self
-        links = { self: object_route }.reverse_merge(common_response_links(opts))
-        opts[:links] = links.merge(opts[:links] || {})
-        opts
-      end
-
-      def add_hateoas_links_for_updated_object(opts)
-        object_route = opts[:object_route] || self
-        object_links = { self: object_route }
-        opts[:object_links] = object_links.merge(opts[:object_links] || {})
-        opts
       end
 
       def filtered_by_foreign_key?(query)

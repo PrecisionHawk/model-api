@@ -110,7 +110,7 @@ module ModelApi
       return [nil, opts.merge(bad_payload: true)] if request_body.nil?
       obj = klass.new if obj.nil?
       verify_update_request_body(request_body, opts[:format], opts)
-      root_elem = opts[:root] = ModelApi::Utils.model_name(klass).singular
+      root_elem = ModelApi::Utils.model_name(klass).singular
       request_obj = opts[:request_obj] = object_from_req_body(root_elem, request_body,
           opts[:format])
       opts[:request_hash] = ModelApi::Utils.internal_value(request_obj).deep_symbolize_keys
