@@ -120,7 +120,7 @@ module ModelApi
       def do_update(obj, opts = {})
         return unless ensure_admin_if_admin_only(opts)
         obj, opts = prepare_object_for_update(obj, opts)
-        return bad_payload(class: klass) if opts[:bad_payload]
+        return bad_payload(class: (self.try(:klass) || obj.try(:class))) if opts[:bad_payload]
         unless obj.present?
           return not_found(opts.merge(class: ModelApi::Utils.find_class(obj, opts), field: :id))
         end
