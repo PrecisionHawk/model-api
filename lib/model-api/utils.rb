@@ -148,7 +148,7 @@ module ModelApi
       end
 
       def http_status(status)
-        unless status.is_a?(Fixnum)
+        unless status.is_a?(Integer)
           status_num = status.to_s.to_i
           if status_num.to_s != status.to_s
             status_sym = status.to_s.to_sym
