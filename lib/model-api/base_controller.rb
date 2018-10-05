@@ -24,7 +24,7 @@ module ModelApi
 
         base.send(:before_action, :common_headers)
 
-        #base.send(:rescue_from, Exception, with: :unhandled_exception)
+        base.send(:rescue_from, Exception, with: :unhandled_exception)
         base.send(:respond_to, :json, :xml)
       end
     end
